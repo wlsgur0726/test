@@ -1,7 +1,9 @@
 #include <iostream>
+#include <vector>
+#include <memory>
 using namespace std;
 
-//#define USE_MOVE_CONSTRUCTOR
+#define USE_MOVE_CONSTRUCTOR
 
 /*
     MSVC2013 - USE_MOVE_CONSTRUCTOR(O)           MSVC2013 - USE_MOVE_CONSTRUCTOR(X)             GCC - USE_MOVE_CONSTRUCTOR(O)               GCC - USE_MOVE_CONSTRUCTOR(X)
@@ -53,92 +55,140 @@ using namespace std;
 
 */
 
+#define _cout cout << "   "
 struct Obj
 {
 	int i;
 	string s;
+	shared_ptr<Obj> p;
 
 	~Obj() {
-		cout << "   Destructor            " << this << endl;
+		p.reset();
+		_cout << "Destructor            " << this << endl;
 	}
 	Obj() {
-		cout << "   Basic Constructor     " << this << endl;
+		_cout << "Basic Constructor     " << this << endl;
 	}
-	Obj(int i, string a) {
-		cout << "   Pramater Constructor  " << this << endl;
+	Obj(int i, string s) {
+		this->i = i;
+		this->s = s;
+		_cout << "Pramater Constructor  " << this << endl;
 	}
 	Obj(const Obj& o) {
-		cout << "   Copy Constructor      " << this << endl;
+		i = o.i;
+		s = o.s;
+		p = o.p;
+		_cout << "Copy Constructor      " << this << "   " << &o << endl;
 	}
 	Obj& operator=(const Obj& o) {
-		cout << "   Equal Operator        " << this << endl;
+		i = o.i;
+		s = o.s;
+		p = o.p;
+		_cout << "Substitute Operator   " << this << "   " << &o << endl;
 		return *this;
 	}
 #ifdef USE_MOVE_CONSTRUCTOR
 	Obj(Obj&& o) {
-		cout << "   Move Constructor      " << this << endl;
+		std::swap(i, o.i);
+		std::swap(s, o.s);
+		std::swap(p, o.p);
+		_cout << "Move Constructor      " << this << "   " << &o << endl;
 	}
-	Obj& operator=(const Obj&& o) {
-		cout << "   Move Operator         " << this << endl;
+	Obj& operator=(Obj&& o) {
+		std::swap(i, o.i);
+		std::swap(s, o.s);
+		std::swap(p, o.p);
+		_cout << "Move Operator         " << this << "   " << &o << endl;
 		return *this;
 	}
 #endif
 	Obj& SomeFunc() {
-		cout << "   Member Function       " << this << endl;
+		_cout << "Member Function       " << this << endl;
 		return *this;
 	}
 };
 
-#define TestStart(TestName) \
-	void TestName() { \
-		cout << "\n[" << __FUNCTION__ << "] Start                          .\n"; \
-		{ \
+#define TestStart(TestName)																			\
+	{																								\
+		cout << "\n[" << TestName << "] Start                                             .\n";		\
+		{																							\
 
-#define TestEnd \
-		} \
-		cout << "-----------------------------------------\n"; \
-	} \
+#define TestEnd																						\
+			_cout << "exit scope\n";																\
+		}																							\
+		cout << "------------------------------------------------------------\n";					\
+	}																								\
 
 
 
+Obj Func1() {
+	_cout << "init...\n";
+	Obj temp;
+	temp.p.reset(new Obj);
+	_cout << "return...\n";
+	return temp;
+}
 
-TestStart(Test01)
-	Obj o(Obj(10, "Param"));
-TestEnd
-
-TestStart(Test02)
-	Obj o1(11, "Param");
-	Obj o2 = o1;
-TestEnd
-
-TestStart(Test03)
-	Obj o1;
-	Obj o2;
-	o2 = o1;
-TestEnd
-
-TestStart(Test04)
-	Obj o = Obj(12, "Param");
-TestEnd
-
-TestStart(Test05)
-	Obj o = Obj(12, "Param").SomeFunc();
-TestEnd
-
-TestStart(Test06)
-	Obj o1;
-	Obj o2;
-	o1 = std::move(o2);
-TestEnd
-
+std::vector<Obj> Func2() {
+	_cout << "init...\n";
+	std::vector<Obj> v;
+	v.resize(3);
+	for (auto& o : v)
+		o.p.reset(new Obj);
+	_cout << "return...\n";
+	return v;
+}
 
 
 int main() {
-	Test01();
-	Test02();
-	Test03();
-	Test04();
-	Test05();
-	Test06();
+	TestStart("Test01")
+		Obj o(Obj(10, "Param"));
+	TestEnd
+
+
+	TestStart("Test02")
+		Obj o1(11, "Param");
+		Obj o2 = o1;
+	TestEnd
+
+
+	TestStart("Test03")
+		Obj o1;
+		Obj o2;
+		o2 = o1;
+	TestEnd
+
+
+	TestStart("Test04")
+		Obj o = Obj(12, "Param");
+	TestEnd
+
+
+	TestStart("Test05")
+		Obj o = Obj(12, "Param").SomeFunc();
+	TestEnd
+
+
+	TestStart("Test06")
+		Obj o1;
+		Obj o2;
+		o1 = std::move(o2);
+	TestEnd
+
+
+	TestStart("Test07")
+		Obj o;
+		o.p.reset(new Obj);
+		o = Func1();
+	TestEnd
+
+
+	TestStart("Test08")
+		std::vector<Obj> v;
+		v.resize(1);
+		v[0].p.reset(new Obj);
+		v = Func2();
+	TestEnd
+
 	return 0;
 }
