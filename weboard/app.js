@@ -4,11 +4,16 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
+var odbc = require('odbc');
 
 var routes = require('./routes/index');
 var users = require('./routes/users');
 
 var app = express();
+var https = require('https');
+var fs = require('fs');
+var db = odbc();
+var _this = require('./srcinfo.js');
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
@@ -56,5 +61,9 @@ app.use(function(err, req, res, next) {
   });
 });
 
+var options = {
+  key: fs.readFileSync('key.pem'),
+  cert: fs.readFileSync('cert.pem')
+};
 
-module.exports = app;
+module.exports = https.createServer(options, app);
