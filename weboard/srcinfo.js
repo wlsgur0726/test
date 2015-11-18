@@ -10,23 +10,29 @@ function captureStack() {
 	return stack;
 };
 
-exports.function = function() {
-	var stack = captureStack();
-	return stack[1].getFunctionName();
+function StackPointer(index) {
+	this.index = index==null ? 1 : index;
 }
-
-exports.line = function() {
+StackPointer.prototype.function = function() {
 	var stack = captureStack();
-	return stack[1].getLineNumber();
+	return stack[this.index].getFunctionName();
+};
+StackPointer.prototype.line = function() {
+	var stack = captureStack();
+	return stack[this.index].getLineNumber();
+};
+StackPointer.prototype.caller = function() {
+	return new StackPointer(this.index + 1);
 };
 
-exports.caller = {
-	function: function() {
-		var stack = captureStack();
-		return stack[2].getFunctionName();
-	},
-	line: function() {
-		var stack = captureStack();
-		return stack[2].getLineNumber();
-	}
+exports.function = function() {
+	var s = new StackPointer(2);
+	return s.function();
 };
+exports.line = function() {
+	var s = new StackPointer(2);
+	return s.line();
+};
+exports.caller = function() {
+	return new StackPointer(2);
+}
