@@ -40,9 +40,9 @@ var connectionController = {
 function checkError(err, db, lastCallback) {
 	if (err) {
 		if (lastCallback)
-			lastCallback(err, new Array());
+			lastCallback(err);
 		else
-			console.log("[" + __this.caller.line() + "] DBError : "  + err);
+			console.log("[" + __this.caller().line() + "] DBError : "  + err);
 		db.complete();
 		return true;
 	}
@@ -104,9 +104,11 @@ function prepareAndExecute(query, params, fetchCallback, lastCallback) {
 	});
 };
 
+exports.prepareAndExecute = prepareAndExecute;
+
 exports.getContentList = function(start, count, callback) {
 	var contents = null;
-	prepareAndExecute("call sp_getContentList(?,?)",
+	prepareAndExecute("{call sp_getContentList(?,?)}",
 	                  [start, count],
 					  function(resNum, list) {
 						  contents = list;
@@ -122,14 +124,17 @@ exports.getContent = function(number, callback) {
 	prepareAndExecute("{call sp_getContent(?)}",
 					  [number],
 					  function(resNum, list) {
-						  if (resNum == 0)
-							  content = list[0];
-						  else
-							  comments = list;
+						  if (resNum == 0) {
+							  if (list.length > 0 && typeof list[0].content != undefined)
+								  content = list[0].content;
+						  }
+						  else {
+							  if (content != null)
+								  comments = list;
+						  }
 					  },
 					  callback ? function(err) {
-						  if (err) console.log(err);
-						  callback(content.content, comments);
+						  callback(err, content, comments);
 					  } : null);
 };
 
@@ -182,9 +187,8 @@ exports.signUp = function(id, pw, callback) {
 	                  [id, pw],
 					  null,
 					  callback ? function(err) {
-						  if (err) console.log(err);
 						  var success = (err == null);
-						  callback(id, success);
+						  callback(err, id, success);
 					  } : null);
 };
 
@@ -196,6 +200,6 @@ exports.signIn = function(id, pw, callback) {
 						  userinfo = list[0];
 					  },
 					  callback ? function(err) {
-						  callback(id, userinfo);
+						  callback(err, id, userinfo);
 					  } : null);
 };
