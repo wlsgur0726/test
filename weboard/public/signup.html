@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>weboard - sign up</title>
+	</head>
+
+	<script src="/javascripts/jquery-1.11.3.js"></script>
+	<script>
+		jQuery(document).ready(function($) {
+			$("#submit").click(function() {
+				$.ajax({
+					url: "/auth",
+					type: "post",
+					data: {
+						id: $("#id").val(),
+						password: $("#password").val()
+					},
+					success: function(data, status) {
+						console.log("success " + status);
+						console.log(data);
+						$("#message").text("");
+						location.href = "/signin.html";
+					},
+					error: function(jqXHR, status, errorThrown ) {
+						var res = jqXHR.responseJSON;
+						console.log("error:" + status + ", " + errorThrown);
+						console.log(res);
+						$("#message").text(res ? res.message : errorThrown);
+					}
+				});
+			}); // $("#submit").click
+		}); // jQuery(document).ready
+	</script>
+	
+	<body>
+		<h1>Sign Up</h1>
+		<p><input type="text" id="id" value="" placeholder="ID"/></p>
+		<p><input type="password" id="password" value="" placeholder="Password"/></p>
+		<p><input type="button" id="submit" value="가입"/></p>
+		<p><div id="message"/></p>
+	</body>
+</html>

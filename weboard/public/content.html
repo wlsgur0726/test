@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>weboard - content</title>
+	</head>
+	
+	<script src="/javascripts/jquery-1.11.3.js"></script>
+	<script src="/javascripts/jquery.cookie.js"></script>
+	<script src="/javascripts/utils.js"></script>
+	<script>
+		jQuery(document).ready(function($) {
+			var session = Utils.getSession();
+			var params = Utils.getUrlParameter();
+			$.ajax({
+				url: "/contents/" + params.number,
+				type: "get",
+				success: function(data, status) {
+					console.log("success " + status);
+					console.log(data);
+					
+					// 글 내용
+					$("#number").text(data.content.number);
+					$("#writer").text(data.content.writer);
+					$("#title").text(data.content.title);
+					$("#register").text(data.content.register);
+					$("#lastedit").text(data.content.lastedit);
+					$("#content").text(data.content.content);
+					
+					// 댓글들
+					var comments = $("#comments")
+					for (var i=0; i<data.comments.length; ++i) {
+						// 현재 로그인한 사용자의 댓글인 경우 댓글 삭제 버튼 표시
+						var delbtn = "";
+						var delev = null;
+						if (session && session.id == data.comments[i].writer) {
+							delev = function(comment_number) {
+								return function() {
+									$.ajax({
+										url: "/contents/" + params.number + "/comment/" + comment_number,
+										type: "delete",
+										success: function(data, status, jqXHR) {
+											console.log("success " + status);
+											location.reload();
+										},
+										error: function(jqXHR, status, errorThrown ) {
+											var res = jqXHR.responseJSON;
+											console.log("error:" + status + ", " + errorThrown);
+											console.log(res);
+										}
+									});
+								};
+							}; // delev
+							delbtn = "<td><input type='button' id='del_comment_" 
+								   + data.comments[i].number
+								   + "' value='삭제'/></td>";
+						}
+						// 테이블에 추가
+						var comment = "<tr>"
+									+ "  <td>" + data.comments[i].writer + " : </td>"
+									+ "  <td>" + data.comments[i].comment + "</td>"
+									+ "  <td>" + data.comments[i].register + "</td>"
+									+ delbtn
+									+ "</tr>";
+						comments.append(comment);
+						if (delev) {
+							var n = data.comments[i].number;
+							$("#del_comment_" + n).click(delev(n));
+						}
+					}
+					
+					// 로그인 되어있는 경우 댓글 추가 컨트롤 표시
+					if (session) {
+						var add = "<tr>"
+								+ "  <td>댓글 추가</td>"
+								+ "  <td><input type='text' id='txt_add_comment'/></td>"
+								+ "  <td><input type='button' id='btn_add_comment' value='확인'/></td>"
+								+ "</tr>";
+						comments.append(add);
+						$("#btn_add_comment").click(function() {
+							$.ajax({
+								url: "/contents/" + params.number + "/comment",
+								type: "post",
+								data: {comment: $("#txt_add_comment").val()},
+								success: function(data, status, jqXHR) {
+									console.log("success " + status);
+									location.reload();
+								},
+								error: function(jqXHR, status, errorThrown ) {
+									var res = jqXHR.responseJSON;
+									console.log("error:" + status + ", " + errorThrown);
+									console.log(res);
+								}
+							});
+						});
+					}
+					
+					// 현재 로그인한 사용자의 글인 경우 수정, 삭제 버튼 표시
+					if (session && session.id == data.content.writer) {
+						var add = "<td><input type='button' id='btn_edit' value='수정'/></td>"
+								+ "<td><input type='button' id='btn_delete' value='삭제'/></td>";
+						$("#editbox").append(add);
+						
+						$("#btn_edit").click(function() {
+							location.href = "/editor.html?number=" + params.number;
+						});
+						
+						$("#btn_delete").click(function() {
+							$.ajax({
+								url: "/contents/" + params.number,
+								type: "delete",
+								success: function(data, status, jqXHR) {
+									console.log("success " + status);
+									location.href = "/board.html";
+								},
+								error: function(jqXHR, status, errorThrown ) {
+									var res = jqXHR.responseJSON;
+									console.log("error:" + status + ", " + errorThrown);
+									console.log(res);
+								}
+							});
+						});
+					}
+				}, // success
+				error: function(jqXHR, status, errorThrown ) {
+					var res = jqXHR.responseJSON;
+					console.log("error:" + status + ", " + errorThrown);
+					console.log(res);
+				}
+			}); // $.ajax
+		}); // jQuery
+	</script>
+
+	<body>
+		<h1>Content</h1>
+		<table>
+			<tr>
+				<td>번호</td>
+				<td id="number"></td>
+				<td>작성자</td>
+				<td id="writer"></td>
+			</tr>
+			<tr>
+				<td>제목</td>
+				<td id="title"></td>
+			</tr>
+			<tr>
+				<td>작성일</td>
+				<td id="register"></td>
+				<td>수정일</td>
+				<td id="lastedit"></td>
+			</tr>
+		</table>
+		
+		<table>
+			<tr id="editbox">
+				<td><input type='button' value='목록' onclick="location.href='/board.html';"/></td>
+			</tr>
+		</table>
+		
+		<hr>
+		<div><pre id="content"></pre></div>
+		<hr>
+		
+		<h3>Comments</h3>
+		<table id="comments"></table>
+	</body>
+</html>

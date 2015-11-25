@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>weboard - edit</title>
+	</head>
+	
+	<script src="/javascripts/jquery-1.11.3.js"></script>
+	<script src="/javascripts/jquery.cookie.js"></script>
+	<script src="/javascripts/utils.js"></script>
+	<script>
+		jQuery(document).ready(function($) {
+			var session = Utils.getSession();
+			var params = Utils.getUrlParameter();
+			
+			if (session == null)
+				return;
+			
+			$("#writer").text(session.id);
+			
+			if (params.number) {
+				$.ajax({
+					url: "/contents/" + params.number,
+					type: "get",
+					success: function(data, status) {
+						console.log("success " + status);
+						console.log(data);
+						$("#title").val(data.content.title);
+						$("#content").val(data.content.content);
+					},
+					error: function(jqXHR, status, errorThrown ) {
+						var res = jqXHR.responseJSON;
+						console.log("error:" + status + ", " + errorThrown);
+						console.log(res);
+					}
+				}); // $.ajax
+			}
+			
+			$("#btn_ok").click(function() {
+				$.ajax({
+					url: "/contents/" + (params.number ? params.number : ""),
+					type: (params.number ? "put" : "post"),
+					data: {
+						title: $("#title").val(),
+						content: $("#content").val()
+					},
+					success: function(data, status) {
+						console.log("success " + status);
+						console.log(data);
+						location.href = "/content.html?number=" + data.number;
+					},
+					error: function(jqXHR, status, errorThrown ) {
+						var res = jqXHR.responseJSON;
+						console.log("error:" + status + ", " + errorThrown);
+						console.log(res);
+					}
+				}); // $.ajax
+			});
+		}); // jQuery
+	</script>
+
+	<body>
+		<h1>Content</h1>
+		<table>
+			<tr>
+				<td>작성자</td>
+				<td id="writer"></td>
+			</tr>
+			<tr>
+				<td>제목</td>
+				<td><input type="text" id="title"/></td>
+			</tr>
+		</table>
+		
+		<hr>
+		<textarea id="content" style="width:90%;height:400px"></textarea>
+		<hr>
+		
+		<table>
+			<tr>
+				<td><input type="button" value="확인" id="btn_ok"/></td>
+				<td><input type="button" value="취소" onclick="history.go(-1);"/></td>
+			</tr>
+		</table>
+	</body>
+</html>

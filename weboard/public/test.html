@@ -1,0 +1,63 @@
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<script src="/javascripts/jquery-1.11.3.js"></script>
+<script src="/javascripts/base64.js"></script>
+<script>
+	jQuery(document).ready(function($) {
+		var i = 0;
+		console.log("req" + (++i));
+		//$.support.cors = true;
+		var info = {
+			id: Base64.encode("testid01"),
+			password: Base64.encode("1234567890")
+		};
+		var signUp = {
+			url: "http://192.168.88.1:12345/auth",
+			type: "post",
+			data: info,
+			success: function(data, status) {
+				console.log("success " + status);
+				console.log(data);
+			},
+			error: function(jqXHR, status, errorThrown ) {
+				console.log("error:" + status + ", " + errorThrown);
+			}
+		};
+		
+		var addContent = {
+			url: "http://192.168.88.1:12345/contents",
+			type: "post",
+			headers: {},
+			data: {
+				title: "test title",
+				content: "test content",
+			},
+			success: function(data, status) {
+				console.log("success " + status);
+				console.log(data);
+			},
+			error: function(jqXHR, status, errorThrown ) {
+				console.log("error:" + status + ", " + errorThrown);
+			}
+		};
+		
+		var signIn = {
+			url: "http://192.168.88.1:12345/auth",
+			type: "get",
+			headers: {
+				Authorization: JSON.stringify(info)
+			},
+			success: function(data, status) {
+				console.log("success " + status);
+				console.log(data);
+				console.log("req" + (++i));
+				addContent.headers.Authorization = JSON.stringify(data);
+				$.ajax(addContent);
+			},
+			error: function(jqXHR, status, errorThrown ) {
+				console.log("error:" + status + ", " + errorThrown);
+			}
+		};
+		
+		$.ajax(signIn);
+	});
+</script>

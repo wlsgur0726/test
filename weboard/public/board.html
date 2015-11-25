@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>weboard - board</title>
+	</head>
+	
+	<script src="/javascripts/jquery-1.11.3.js"></script>
+	<script src="/javascripts/jquery.cookie.js"></script>
+	<script src="/javascripts/utils.js"></script>
+	<script>
+		jQuery(document).ready(function($) {
+			var session = Utils.getSession();
+			var params = Utils.getUrlParameter();
+			var count = params.count ? params.count : 10;
+			var page = params.start ? Math.floor(params.start/count)+1: 1;
+			$("#count").val(count);
+			$("#page").val(page);
+			
+			$("#move").click(function() {
+				var count = $("#count").val();
+				var start = ($("#page").val() - 1) * count;
+				location.href = "/board.html?start=" + start + "&count=" + count;
+			});
+			
+			// 로그인되어있는 경우 글쓰기 버튼 표시
+			if (session) {
+				$("#controller").append("<tr><td><input type='button' id='write' value='글쓰기'/></td></tr>");
+				$("#write").click(function() {
+					location.href = "/editor.html";
+				});
+			}
+			
+			$.ajax({
+				url: "/content-list?" + params.toString(),
+				type: "get",
+				success: function(data, status) {
+					console.log("success " + status);
+					console.log(data);
+					var list = $("#list");
+					for (var i=0; i<data.length; ++i) {
+						var linkStart = "<a href='/content.html?number=" + data[i].number + "'>";
+						var number = linkStart + data[i].number + "</a>";
+						var title = linkStart + data[i].title + "</a>";
+						var row = "<tr>"
+								+ "  <td>" + number + "</td>"
+								+ "  <td>" + title + "</td>"
+								+ "  <td>" + data[i].writer + "</td>"
+								+ "  <td>" + data[i].lastedit + "</td>"
+								+ "</tr>";
+						list.append(row);
+					}
+				}, // success
+				error: function(jqXHR, status, errorThrown ) {
+					var res = jqXHR.responseJSON;
+					console.log("error:" + status + ", " + errorThrown);
+					console.log(res);
+				}
+			}); // $.ajax
+		}); // jQuery(document).ready
+	</script>
+	
+	<body>
+		<h1>Board</h1>
+		
+		<table id="list" border="1">
+			<tr>
+				<td>number</td> <td>title</td> <td>writer</td> <td>lastedit</td>
+			</tr>
+		</table>
+		
+		<table id="controller">
+			<tr>
+				<td>Count</td>
+				<td><input type="text" id="count"/></td>
+			</tr>
+			<tr>
+				<td>Page</td>
+				<td><input type="text" id="page"/></td>
+				<td><input type="button" id="move" value="이동"/></td>
+			</tr>
+		</table>
+	</body>
+</html>

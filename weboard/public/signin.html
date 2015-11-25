@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>weboard - sign in</title>
+	</head>
+
+	<script src="/javascripts/jquery-1.11.3.js"></script>
+	<script src="/javascripts/jquery.cookie.js"></script>
+	<script src="/javascripts/base64.js"></script>
+	<script src="/javascripts/utils.js"></script>
+	<script>
+		jQuery(document).ready(function($) {
+			$("#signin").click(function() {
+				var info = {
+					id: Base64.encode($("#id").val()),
+					password: Base64.encode($("#password").val())
+				};
+				$.ajax({
+					url: "/auth",
+					type: "get",
+					headers: {
+						Authorization: JSON.stringify(info)
+					},
+					success: function(data, status, jqXHR) {
+						console.log("success " + status);
+						console.log(Utils.getSession());
+						$("#message").text("");
+						location.href = "/board.html";
+					},
+					error: function(jqXHR, status, errorThrown ) {
+						var res = jqXHR.responseJSON;
+						console.log("error:" + status + ", " + errorThrown);
+						console.log(res);
+						$("#message").text(res ? res.message : errorThrown);
+					}
+				});
+			}); // $("#signin").click
+		}); // jQuery(document).ready
+	</script>
+
+	<body>
+		<h1>Sign In</h1>
+		<p><input type="text" id="id" value="" placeholder="ID"/></p>
+		<p><input type="password" id="password" value="" placeholder="Password"/></p>
+		<p>
+			<input type="button" id="signin" value="Sign In"/>
+			<input type="button" id="signup" value="Sign Up" onclick="location.href='/signup.html';"/>
+		</p>
+		<p><div id="message"/></p>
+	</body>
+</html>

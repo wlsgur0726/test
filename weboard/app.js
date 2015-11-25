@@ -4,7 +4,7 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
-var odbc = require('odbc');
+var uuid = require('node-uuid');
 
 var routes = require('./routes/index');
 var users = require('./routes/users');
@@ -14,7 +14,7 @@ var http = require('http');
 var https = require('https');
 var fs = require('fs');
 var CORS = require('cors')();
-var sessionManager = require("./redis").sessionManager;
+var sessionManager = require("./redis").sessionManager();
 var _this = require("./srcinfo");
 
 // view engine setup
@@ -22,7 +22,8 @@ app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
 // uncomment after placing your favicon in /public
-//app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
+app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
+
 app.use(logger('dev'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -56,6 +57,8 @@ if (app.get('env') === 'development') {
       message: err.message,
       error: err
     });
+	console.error("STATUS : " + err.status);
+	console.error(JSON.stringfy(err));
   });
 }
 

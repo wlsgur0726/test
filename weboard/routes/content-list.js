@@ -24,7 +24,7 @@ router.get("/", function(req, res, next) {
 	
 	db.getContentList(start, count, function(err, contents) {
 		if (err) {
-			console.log(err);
+			console.error(err);
 			next(NewError(HTTPStatus.INTERNAL_SERVER_ERROR, err));
 			return;
 		}

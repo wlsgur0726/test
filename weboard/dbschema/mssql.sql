@@ -168,8 +168,8 @@ CREATE PROCEDURE [dbo].[sp_getContent]
 AS
 BEGIN
 	SET NOCOUNT ON;
-	select content from tb_board where number=@aNumber;
-    select * from tb_comment where owner=@aNumber;
+	select * from tb_board where number=@aNumber;
+	select * from tb_comment where owner=@aNumber;
 END
 
 GO

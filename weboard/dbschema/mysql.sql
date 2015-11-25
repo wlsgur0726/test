@@ -81,8 +81,8 @@ CREATE DEFINER=`root`@`%` PROCEDURE `sp_getContent`(
 	IN aNumber INT
 )
 BEGIN
-	select content from tb_board where number=aNumber;
-    select * from tb_comment where owner=aNumber;
+	select * from tb_board where number=aNumber;
+	select * from tb_comment where owner=aNumber;
 END$$
 DELIMITER ;
 
