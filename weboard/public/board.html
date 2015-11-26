@@ -23,11 +23,36 @@
 				location.href = "/board.html?start=" + start + "&count=" + count;
 			});
 			
-			// 로그인되어있는 경우 글쓰기 버튼 표시
+			// 로그인되어있는 경우 아이디, 로그아웃 버튼, 글쓰기 버튼 표시
 			if (session) {
+				$("#userinfo").append("<td>" + session.id + "</td>" + 
+									  "<td><input type='button' id='signout' value='Sign Out'/></td>");
+				$("#signout").click(function() {
+					$.ajax({
+						url: "/auth",
+						type: "delete",
+						success: function(data, status, jqXHR) {
+							console.log("success " + status);
+							location.reload();
+						},
+						error: function(jqXHR, status, errorThrown ) {
+							var res = jqXHR.responseJSON;
+							console.log("error:" + status + ", " + errorThrown);
+							console.log(res);
+						}
+					});
+				});
+				
 				$("#controller").append("<tr><td><input type='button' id='write' value='글쓰기'/></td></tr>");
 				$("#write").click(function() {
 					location.href = "/editor.html";
+				});
+			}
+			// 로그인이 되어있지 않은 경우 로그인 버튼 표시
+			else {
+				$("#userinfo").append("<td><input type='button' id='signin' value='Sign In'/></td>");
+				$("#signin").click(function() {
+					location.href = "/signin.html";
 				});
 			}
 			
@@ -62,6 +87,11 @@
 	
 	<body>
 		<h1>Board</h1>
+		
+		<table>
+			<tr id="userinfo">
+			</tr>
+		</table>
 		
 		<table id="list" border="1">
 			<tr>

@@ -1,4 +1,4 @@
-var app = require('./app.js');
+var server = require('./app.js').https();
 process.on('uncaughtException', function (err) {
 	console.error('Caught exception: ' + err);
 });
@@ -13,4 +13,4 @@ process.on('exit', function(code) {
 });
 
 console.log('start');
-app.listen(12345);
+server.listen(12345);

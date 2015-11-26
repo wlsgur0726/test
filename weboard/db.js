@@ -168,17 +168,20 @@ exports.editContent = function(number, title, writer, content, callback) {
 	
 	var query;
 	var params;
+	var dt = new Date();
+	var now = dt.getFullYear() + "-" + (dt.getMonth()+1) + "-" + dt.getDate() + " "
+			+ dt.getHours() + ":" + dt.getMinutes() + ":" + dt.getSeconds();
 	if (title!=null && content!=null) {
-		query = "update tb_board set title=?, content=? where number=? and writer=?";
-		params = [title, content, number, writer];
+		query = "update tb_board set lastedit=?, title=?, content=? where number=? and writer=?";
+		params = [now, title, content, number, writer];
 	}
 	else if (title!=null) {
-		query = "update tb_board set title=? where number=? and writer=?";
-		params = [title, number, writer];
+		query = "update tb_board set lastedit=?, title=? where number=? and writer=?";
+		params = [now, title, number, writer];
 	}
 	else {
-		query = "update tb_board set content=? where number=? and writer=?";
-		params = [content, number, writer];
+		query = "update tb_board set lastedit=?, content=? where number=? and writer=?";
+		params = [now, content, number, writer];
 	}
 	
 	prepareAndExecute(query, params, null,
