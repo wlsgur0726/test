@@ -1,5 +1,4 @@
 var Redis = require('redis');
-var cookie = require('cookie');
 var uuid = require('node-uuid');
 var HashMap = require('hashmap');
 var crypto = require('crypto');
