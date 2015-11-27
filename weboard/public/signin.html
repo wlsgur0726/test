@@ -5,12 +5,9 @@
 		<title>weboard - sign in</title>
 	</head>
 
-	<script src="/javascripts/jquery-1.11.3.js"></script>
-	<script src="/javascripts/jquery.cookie.js"></script>
-	<script src="/javascripts/base64.js"></script>
-	<script src="/javascripts/utils.js"></script>
+	<script src="/javascripts/weboard.js"></script>
 	<script>
-		jQuery(document).ready(function($) {
+		weboard.main(function($, params, session) {
 			$("#signin").click(function() {
 				var info = {
 					id: Base64.encode($("#id").val()),
@@ -24,7 +21,7 @@
 					},
 					success: function(data, status, jqXHR) {
 						console.log("success " + status);
-						console.log(Utils.getSession());
+						console.log(weboard.getSession());
 						$("#message").text("");
 						location.href = "/board.html";
 					},
@@ -36,7 +33,7 @@
 					}
 				});
 			}); // $("#signin").click
-		}); // jQuery(document).ready
+		}); // weboard.main
 	</script>
 
 	<body>

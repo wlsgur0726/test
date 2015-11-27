@@ -8,10 +8,28 @@ var base64 = require("../public/javascripts/base64");
 
 router.get("/", function(req, res, next) {
 	if (req.session) {
-		res.unregisterSession(req.session.key);
-		res.session = null;
+		// 이미 인증이 되어 있고, nonce를 재발급하는 경우
+		res.resetNonce(req.session, function(err, success) {
+			if (err) {
+				// redis error
+				console.error(err);
+				next(NewError(HTTPStatus.INTERNAL_SERVER_ERROR, err));
+			}
+			else if (success) {
+				// 성공
+				res.send();
+			}
+			else {
+				// 해킹시도 감지
+				res.status(HTTPStatus.UNAUTHORIZED).send({
+					message: "재인증이 필요합니다."
+				});
+			}
+		});
+		return;
 	}
 	
+	// 신규 세션 발급
 	var authHeader = req.get("Authorization");
 	if (authHeader)
 		authHeader = JSON.parse(authHeader);
@@ -20,7 +38,10 @@ router.get("/", function(req, res, next) {
 					  || authHeader.id == null
 					  || authHeader.password == null;
 	if (invalidRequest) {
-		next(NewError(HTTPStatus.BAD_REQUEST));
+		// 정보 부족
+		res.status(HTTPStatus.BAD_REQUEST).send({
+			message: "인증 정보가 부족합니다."
+		});
 		return;
 	}
 	
@@ -28,13 +49,25 @@ router.get("/", function(req, res, next) {
 			  crypto.createHash("sha1").update(base64.decode(authHeader.password)).digest("hex"),
 			  function(err, id, userinfo) {
 				  if (err) {
+					  // DB error
+					  console.error(err);
 					  next(NewError(HTTPStatus.INTERNAL_SERVER_ERROR, err));
 				  }
 				  else if (userinfo) {
-					  res.registerSession(userinfo);
-					  res.send();
+					  res.registerSession(userinfo, function(err, success) {
+						  if (success) {
+							  // 성공
+							  res.send(); 
+							  return;
+						  }
+						  // redis error 또는 세션키 발급 실패
+						  if (err)
+							  console.error(err);
+						  next(NewError(HTTPStatus.INTERNAL_SERVER_ERROR, err));
+					  });
 				  }
 				  else {
+					  // 인증 실패
 					  res.status(HTTPStatus.BAD_REQUEST).send({
 						  message: "ID나 Password가 일치하지 않습니다."
 					  });
@@ -43,9 +76,18 @@ router.get("/", function(req, res, next) {
 });
 
 router.post("/", function(req, res, next) {
+	if (req.session) {
+		res.status(HTTPStatus.BAD_REQUEST).send({
+			message: "로그아웃 후 요청하세요."
+		});
+		return;
+	}
+	
 	var info = req.body;
 	if (info == null || info.id == null || info.password == null) {
-		next(NewError(HTTPStatus.BAD_REQUEST));
+		res.status(HTTPStatus.BAD_REQUEST).send({
+			message: "가입을 위한 정보가 부족합니다."
+		});
 		return;
 	}
 	var pw = crypto.createHash("sha1").update(info.password).digest("hex");
@@ -57,10 +99,13 @@ router.post("/", function(req, res, next) {
 				});
 			}
 			else {
+				// DB error
+				console.error(err);
 				next(NewError(HTTPStatus.INTERNAL_SERVER_ERROR, err));
 			}
 		}
 		else {
+			// 성공
 			res.send();
 		}
 	});
@@ -68,7 +113,9 @@ router.post("/", function(req, res, next) {
 
 router.delete("/", function(req, res, next) {
 	if (req.session == null) {
-		next(NewError(HTTPStatus.BAD_REQUEST));
+		res.status(HTTPStatus.UNAUTHORIZED).send({
+			message: "권한이 없습니다."
+		});
 		return;
 	}
 	res.unregisterSession(req.session.key);

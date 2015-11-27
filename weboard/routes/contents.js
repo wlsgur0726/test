@@ -4,20 +4,24 @@ var db = require("../db");
 var NewError = require("../error");
 var router = express.Router();
 
-function validCheck_session(req, next) {
+function validCheck_session(req, res) {
 	if (req.session == null) {
-		next(NewError(HTTPStatus.UNAUTHORIZED));
+		res.status(HTTPStatus.UNAUTHORIZED).send({
+			message: "권한이 없습니다."
+		});
 		return false;
 	}
 	return true;
 }
 
-function validCheck_param(req, next, paramNames) {
+function validCheck_param(req, res, paramNames) {
 	var ret = [];
 	for (var i=0; i<paramNames.length; ++i) {	
 		var num = req.params[paramNames[i]];
 		if (isNaN(num)) {
-			next(NewError(HTTPStatus.BAD_REQUEST));
+			res.status(HTTPStatus.BAD_REQUEST).send({
+				message: "잘못된 파라미터입니다."
+			});
 			return null;
 		}
 		ret[i] = num;
@@ -25,14 +29,14 @@ function validCheck_param(req, next, paramNames) {
 	return ret.length == 0 ? null : ret;
 }
 
-function validCheck_all(req, next, paramNames) {
-	if (validCheck_session(req, next))
-		return validCheck_param(req, next, paramNames);
+function validCheck_all(req, res, paramNames) {
+	if (validCheck_session(req, res))
+		return validCheck_param(req, res, paramNames);
 	return null;
 }
 
 router.get("/:num", function(req, res, next) {
-	var num = validCheck_param(req, next, ["num"]);
+	var num = validCheck_param(req, res, ["num"]);
 	if (num == null)
 		return;
 
@@ -47,7 +51,7 @@ router.get("/:num", function(req, res, next) {
 });
 
 router.post("/", function(req, res, next) {
-	if (validCheck_session(req, next) == false)
+	if (validCheck_session(req, res) == false)
 		return;
 
 	db.addContent(req.body.title,
@@ -65,7 +69,7 @@ router.post("/", function(req, res, next) {
 });
 
 router.post("/:num/comment", function(req, res, next) {
-	var num = validCheck_all(req, next, ["num"]);
+	var num = validCheck_all(req, res, ["num"]);
 	if (num == null)
 		return;
 
@@ -83,7 +87,7 @@ router.post("/:num/comment", function(req, res, next) {
 });
 
 router.put("/:num", function(req, res, next) {
-	var num = validCheck_all(req, next, ["num"]);
+	var num = validCheck_all(req, res, ["num"]);
 	if (num == null)
 		return;
 
@@ -102,7 +106,7 @@ router.put("/:num", function(req, res, next) {
 });
 
 router.delete("/:num", function(req, res, next) {
-	var num = validCheck_all(req, next, ["num"]);
+	var num = validCheck_all(req, res, ["num"]);
 	if (num == null)
 		return;
 
@@ -117,7 +121,7 @@ router.delete("/:num", function(req, res, next) {
 });
 
 router.delete("/:contentNum/comment/:commentNum", function(req, res, next) {
-	var nums = validCheck_all(req, next, ["contentNum", "commentNum"]);
+	var nums = validCheck_all(req, res, ["contentNum", "commentNum"]);
 	if (nums == null)
 		return;
 

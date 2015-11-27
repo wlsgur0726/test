@@ -5,13 +5,9 @@
 		<title>weboard - content</title>
 	</head>
 	
-	<script src="/javascripts/jquery-1.11.3.js"></script>
-	<script src="/javascripts/jquery.cookie.js"></script>
-	<script src="/javascripts/utils.js"></script>
+	<script src="/javascripts/weboard.js"></script>
 	<script>
-		jQuery(document).ready(function($) {
-			var session = Utils.getSession();
-			var params = Utils.getUrlParameter();
+		weboard.main(function($, params, session) {
 			$.ajax({
 				url: "/contents/" + params.number,
 				type: "get",
@@ -128,7 +124,7 @@
 					console.log(res);
 				}
 			}); // $.ajax
-		}); // jQuery
+		}); // weboard.main
 	</script>
 
 	<body>

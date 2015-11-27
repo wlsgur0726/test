@@ -1,7 +1,6 @@
 var Redis = require('redis');
 var uuid = require('node-uuid');
-var HashMap = require('hashmap');
-var crypto = require('crypto');
+var HTTPStatus = require('http-status');
 var NewError = require("./error");
 
 const HMAC_Key = "key";
@@ -118,147 +117,180 @@ var pool = new Pool({
 	port: 6379
 });
 
-function hash(data) {
-	return crypto.createHmac("sha1", HMAC_Key).update(data).digest("base64");
-}
-function resetNonce(res, session) {
-	session.nonce = Math.random();
-	session.HMAC = hash(session.nonce.toString());
-	res.cookie("session", JSON.stringify(session));
+function setSessionCookie(res, sessionInfo) {
+	res.cookie("session", JSON.stringify({
+		key: sessionInfo.key,
+		id: sessionInfo.id,
+		nonce: sessionInfo.nonce
+	}));
 }
 
-var candidateSessions = new HashMap();
-function registerSession(sessionInfo) {
-	sessionInfo.key = "session:" + uuid.v4();
-	candidateSessions.set(sessionInfo.key, new Array());
-	pool.open(function(redis) {
-		redis.multi([
-			["set", sessionInfo.key, JSON.stringify(sessionInfo)],
-			["expire", sessionInfo.key, expireSec]
-		]).exec(function(err, replies) {
-			pool.close(redis);
-			var reqs = candidateSessions.get(sessionInfo.key);
-			candidateSessions.remove(sessionInfo.key);
-			for (var i=0; i<reqs.length; ++i)
-				reqs[i](err);
-		});
-	});
+function registerSession(sessionInfo, callback, retry) {
+	var self = this;
+	if (retry && retry >= 2) {
+		// 2번이나 Unique한 UUID 발급에 실패?
+		console.error("세션키 발급 실패");
+		callback(null, false);
+		return;
+	}
 	
-	resetNonce(this, {
-		key: sessionInfo.key, 
-		id: sessionInfo.id
+	sessionInfo.key = "session:" + uuid.v4();
+	pool.open(function(redis) {
+		sessionInfo.nonce = Math.random();
+		redis.setnx(sessionInfo.key, 
+					JSON.stringify(sessionInfo),
+					function(err, reply) {
+						if (err) {
+							pool.close(redis);
+							callback(err, false);
+						}
+						else if (reply) {
+							// 성공
+							setSessionCookie(self, sessionInfo);
+							callback(err, true);
+							redis.expire(sessionInfo.key, expireSec, function() {
+								pool.close(redis);
+							});
+						}
+						else {
+							// 세션키가 이미 존재하는 경우 새로운 세션키로 재시도
+							pool.close(redis);
+							sessionInfo.key = null;
+							self.registerSession(sessionInfo,
+												 callback,
+												 (retry ? retry+1 : 1));
+						}
+					}
+		);
 	});
 }
+
+function resetNonce(sessionInfo, callback) {
+	// 기존 세션의 nonce를 재발급 하는 경우
+	var self = this;
+	pool.open(function(redis) {
+		// 1. watch를 걸고 키를 조회
+		redis.batch([
+			["watch", sessionInfo.key],
+			["get", sessionInfo.key]
+		]).exec(function(err, replies) {
+			// 2. 유효성 검사
+			var invalid = false;
+			if (err)
+				invalid = true;
+			else if (replies && replies[1]) {
+				var org = JSON.parse(replies[1]);
+				if (org.nonce != sessionInfo.nonce) {
+					// nonce가 불일치한 경우 해킹시도로 판단하고 세션 폐기
+					self.unregisterSession(sessionInfo.key);
+					invalid = true;
+				}
+			}
+			else {
+				// 다른 요청에 의해 세션이 폐기된 경우 (해킹시도로 인한 nonce 불일치 등)
+				// 이 갱신 요청도 취소하고 쿠키 폐기
+				self.unregisterSession(sessionInfo.key);
+				invalid = true;
+			}
+			
+			if (invalid) {
+				redis.unwatch(function() {
+					pool.close(redis);
+				});
+				callback(err, false);
+				return;
+			}
+			
+			// 3. 유효한 세션인 경우 nonce를 갱신
+			sessionInfo.nonce = Math.random();
+			redis.multi()
+				.setex(sessionInfo.key, expireSec, JSON.stringify(sessionInfo))
+				.exec(function(err, replies) {
+					pool.close(redis);
+					if (err)
+						callback(err, false);
+					else if (replies) {
+						// 성공
+						setSessionCookie(self, sessionInfo);
+						callback(err, true);
+					}
+					else {
+						// 트랜잭션 중 다른 요청에서 세션을 수정 또는 폐기한 경우
+						// 해킹시도로 판단하고 세션 폐기
+						self.unregisterSession(sessionInfo.key);
+						callback(err, false);
+					}
+				});
+		});
+	});
+} // function registerSession
 
 function unregisterSession(sessionKey) {
-	pool.open(function(redis) {
-		redis.del(sessionKey, function(err, replies) {
-			pool.close(redis);
+	if (sessionKey) {
+		pool.open(function(redis) {
+			redis.del(sessionKey, function(err, replies) {
+				pool.close(redis);
+			});
 		});
-	});
+	}
 	this.clearCookie("session");
 }
 
 exports.sessionManager = function() {
 	return function(req, res, next) {
 		res.registerSession = registerSession;
+		res.resetNonce = resetNonce;
 		res.unregisterSession = unregisterSession;
 		req.session = null;
-		var session = null;
-		if (req.cookies && req.cookies.session)
-			session = JSON.parse(req.cookies.session);
 
-		if (session == null) {
+		var sessionCookie = null;
+		if (req.cookies && req.cookies.session)
+			sessionCookie = JSON.parse(req.cookies.session);
+
+		if (sessionCookie == null) {
 			next();
 			return;
 		}
-		
-		// 변조 여부 체크
-		var invalid = false;
-		if (session.key == null)
-			invalid = true;
-		else if (hash(session.nonce.toString()) != session.HMAC) {
-			// 해커에 의해 변조된 경우 - 세션을 폐기한다.
-			res.unregisterSession(session.key);
-			invalid = true;
-		}
-		
-		if (invalid) {
+
+		if (sessionCookie.key == null) {
 			console.log("invalid session");
 			next(NewError(HTTPStatus.UNAUTHORIZED));
 			return;
-		}		
-		resetNonce(res, session);
+		}
 		
-		// 세션키로 유저 정보 조회
-		var candidate = candidateSessions.get(session.key);
-		var getSessionInfo = function(err) {
-			if (err) {
-				console.error(err);
-				next(NewError(HTTPStatus.INTERNAL_SERVER_ERROR, err));
-				return;
-			}
-			pool.open(function(redis) {
-				var errors = [];
-				var callback = function(err, reply) {
-					if (err) {
-						errors[0] = err;
-						res.unregisterSession(session.key);
-					}
-					else if (reply == null) {
-						res.clearCookie("session");
-					}
-					else {
-						// success
-						req.session = JSON.parse(reply);
-					}
-				};
-				
-				redis.multi([
-					["get", session.key, callback],
-					["expire", session.key, expireSec]
-				]).exec(function(err) {
-					pool.close(redis);
-					errors[1] = err;
-					if (errors[0] || errors[1]) {
-						console.error(errors);
-						next(NewError(HTTPStatus.INTERNAL_SERVER_ERROR, errors));
-					}
-					else {
-						// success
+		// 세션 정보 조회
+		pool.open(function(redis) {
+			redis.batch([
+				["get", sessionCookie.key],
+				["expire", sessionCookie.key, expireSec]
+			]).exec(function(err, replies) {
+				pool.close(redis);
+				if (err) {
+					console.error(errors);
+					next(NewError(HTTPStatus.INTERNAL_SERVER_ERROR, errors));
+				}
+				else {
+					if (replies==null || replies[0]==null) {
+						// 세션이 존재하지 않는 경우 (만료)
+						res.unregisterSession();
 						next();
 					}
-				});
+					else {
+						// nonce 검사
+						var session = JSON.parse(replies[0]);
+						if (session.nonce == sessionCookie.nonce) {
+							// 세션 인증 성공
+							req.session = session;
+							next();
+						}
+						else {
+							// 불일치 시 세션 폐기
+							res.unregisterSession(session.key);
+							next(NewError(HTTPStatus.UNAUTHORIZED));
+						}	
+					}
+				}
 			});
-		}; // var getSessionInfo
-		
-		if (candidate)
-			candidate.push(getSessionInfo);
-		else
-			getSessionInfo(null);
+		});
 	};
 }; // exports.sessionManager
-
-//////////////////////////////////////////////////
-var nn = 1;
-function test() {
-	pool.open(function(redis) {
-		var callback = function(err, result){
-			console.log(nn + "===================");
-			console.log(err);
-			console.log(result);
-			++nn;
-		};
-		redis.multi([
-			["get", "key1", callback],
-			["expire", "key1", 10, callback]
-		]).exec(function(err, replies) {
-			console.log("last===================");
-			console.log(err);
-			console.log(replies);
-			pool.closeAll();
-		});
-	});
-	console.log("start");
-}
-//test();

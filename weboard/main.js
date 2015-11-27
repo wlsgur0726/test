@@ -1,6 +1,7 @@
 var server = require('./app.js').https();
 process.on('uncaughtException', function (err) {
-	console.error('Caught exception: ' + err);
+	console.error('Caught exception');
+	console.error(err.stack);
 });
 process.on('unhandledRejection', function(reason, p) {
   console.error('unhandledRejection ' + reason + ' ' + p);

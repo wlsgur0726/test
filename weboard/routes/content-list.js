@@ -13,7 +13,9 @@ router.get("/", function(req, res, next) {
 	var count = req.query.count;
 	
 	if (is_not_a_number(start) || is_not_a_number(count)) {
-		next(NewError(HTTPStatus.BAD_REQUEST));
+		res.status(HTTPStatus.BAD_REQUEST).send({
+			message: "잘못된 파라미터입니다."
+		});
 		return;
 	}
 	

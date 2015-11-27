@@ -5,13 +5,9 @@
 		<title>weboard - board</title>
 	</head>
 	
-	<script src="/javascripts/jquery-1.11.3.js"></script>
-	<script src="/javascripts/jquery.cookie.js"></script>
-	<script src="/javascripts/utils.js"></script>
+	<script src="/javascripts/weboard.js"></script>
 	<script>
-		jQuery(document).ready(function($) {
-			var session = Utils.getSession();
-			var params = Utils.getUrlParameter();
+		weboard.main(function($, params, session) {
 			var count = params.count ? params.count : 10;
 			var page = params.start ? Math.floor(params.start/count)+1: 1;
 			$("#count").val(count);
@@ -82,7 +78,7 @@
 					console.log(res);
 				}
 			}); // $.ajax
-		}); // jQuery(document).ready
+		}); // weboard.main
 	</script>
 	
 	<body>

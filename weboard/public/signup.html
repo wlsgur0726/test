@@ -5,9 +5,9 @@
 		<title>weboard - sign up</title>
 	</head>
 
-	<script src="/javascripts/jquery-1.11.3.js"></script>
+	<script src="/javascripts/weboard.js"></script>
 	<script>
-		jQuery(document).ready(function($) {
+		weboard.main(function($, params, session) {
 			$("#submit").click(function() {
 				$.ajax({
 					url: "/auth",
@@ -30,7 +30,7 @@
 					}
 				});
 			}); // $("#submit").click
-		}); // jQuery(document).ready
+		}); // weboard.main
 	</script>
 	
 	<body>
