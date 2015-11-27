@@ -4,11 +4,14 @@ var db = require("../db");
 var NewError = require("../error");
 var router = express.Router();
 
+
 function is_not_a_number(p) {
 	return p==null ? false : isNaN(p);
 }
 
+
 router.get("/", function(req, res, next) {
+	// 글 목록 조회
 	var start = req.query.start;
 	var count = req.query.count;
 	
@@ -33,5 +36,6 @@ router.get("/", function(req, res, next) {
 		res.send(contents);
 	});
 });
+
 
 module.exports = router;

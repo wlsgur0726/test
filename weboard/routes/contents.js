@@ -4,6 +4,7 @@ var db = require("../db");
 var NewError = require("../error");
 var router = express.Router();
 
+
 function validCheck_session(req, res) {
 	if (req.session == null) {
 		res.status(HTTPStatus.UNAUTHORIZED).send({
@@ -35,7 +36,9 @@ function validCheck_all(req, res, paramNames) {
 	return null;
 }
 
+
 router.get("/:num", function(req, res, next) {
+	// 글 조회
 	var num = validCheck_param(req, res, ["num"]);
 	if (num == null)
 		return;
@@ -50,7 +53,9 @@ router.get("/:num", function(req, res, next) {
 	});
 });
 
+
 router.post("/", function(req, res, next) {
+	// 글 작성
 	if (validCheck_session(req, res) == false)
 		return;
 
@@ -68,25 +73,9 @@ router.post("/", function(req, res, next) {
 				  });
 });
 
-router.post("/:num/comment", function(req, res, next) {
-	var num = validCheck_all(req, res, ["num"]);
-	if (num == null)
-		return;
-
-	db.addComment(num[0],
-				  req.session.id,
-				  req.body.comment,
-				  function(err, number){
-					  if (err) {
-						  console.error(err);
-						  next(NewError(HTTPStatus.INTERNAL_SERVER_ERROR, err));
-						  return;
-					  }
-					  res.send({number: number});
-				  });
-});
 
 router.put("/:num", function(req, res, next) {
+	// 글 수정
 	var num = validCheck_all(req, res, ["num"]);
 	if (num == null)
 		return;
@@ -105,7 +94,9 @@ router.put("/:num", function(req, res, next) {
 				   });
 });
 
+
 router.delete("/:num", function(req, res, next) {
+	// 글 제거
 	var num = validCheck_all(req, res, ["num"]);
 	if (num == null)
 		return;
@@ -120,7 +111,29 @@ router.delete("/:num", function(req, res, next) {
 	});
 });
 
+
+router.post("/:num/comment", function(req, res, next) {
+	// 댓글 작성
+	var num = validCheck_all(req, res, ["num"]);
+	if (num == null)
+		return;
+
+	db.addComment(num[0],
+				  req.session.id,
+				  req.body.comment,
+				  function(err, number){
+					  if (err) {
+						  console.error(err);
+						  next(NewError(HTTPStatus.INTERNAL_SERVER_ERROR, err));
+						  return;
+					  }
+					  res.send({number: number});
+				  });
+});
+
+
 router.delete("/:contentNum/comment/:commentNum", function(req, res, next) {
+	// 댓글 제거
 	var nums = validCheck_all(req, res, ["contentNum", "commentNum"]);
 	if (nums == null)
 		return;
@@ -136,5 +149,6 @@ router.delete("/:contentNum/comment/:commentNum", function(req, res, next) {
 						 res.send({number: number});
 					 });
 });
+
 
 module.exports = router;
