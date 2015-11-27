@@ -6,7 +6,7 @@
  - 클라 : HTML, jQuery
  - DB : MSSQL(or MySQL), Redis
 
-### 실행방법
+### 실행 방법
     cd weboard
     npm update
     npm start
