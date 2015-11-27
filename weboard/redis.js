@@ -3,8 +3,7 @@ var uuid = require('node-uuid');
 var HTTPStatus = require('http-status');
 var NewError = require("./error");
 
-const HMAC_Key = "key";
-const expireSec = 5 * 60;
+const ExpireSec = 5 * 60;
 
 function NewClient(pool) {	
 	var client = Redis.createClient(pool.options);
@@ -121,7 +120,7 @@ function setSessionCookie(res, sessionInfo) {
 	res.cookie("session", JSON.stringify({
 		key: sessionInfo.key,
 		id: sessionInfo.id,
-		nonce: sessionInfo.nonce
+		token: sessionInfo.token
 	}));
 }
 
@@ -136,7 +135,7 @@ function registerSession(sessionInfo, callback, retry) {
 	
 	sessionInfo.key = "session:" + uuid.v4();
 	pool.open(function(redis) {
-		sessionInfo.nonce = Math.random();
+		sessionInfo.token = Math.random();
 		redis.setnx(sessionInfo.key, 
 					JSON.stringify(sessionInfo),
 					function(err, reply) {
@@ -148,7 +147,7 @@ function registerSession(sessionInfo, callback, retry) {
 							// 성공
 							setSessionCookie(self, sessionInfo);
 							callback(err, true);
-							redis.expire(sessionInfo.key, expireSec, function() {
+							redis.expire(sessionInfo.key, ExpireSec, function() {
 								pool.close(redis);
 							});
 						}
@@ -165,8 +164,8 @@ function registerSession(sessionInfo, callback, retry) {
 	});
 }
 
-function resetNonce(sessionInfo, callback) {
-	// 기존 세션의 nonce를 재발급 하는 경우
+function reissueToken(sessionInfo, callback) {
+	// 기존 세션의 token을 재발급 하는 경우
 	var self = this;
 	pool.open(function(redis) {
 		// 1. watch를 걸고 키를 조회
@@ -180,16 +179,16 @@ function resetNonce(sessionInfo, callback) {
 				invalid = true;
 			else if (replies && replies[1]) {
 				var org = JSON.parse(replies[1]);
-				if (org.nonce != sessionInfo.nonce) {
-					// nonce가 불일치한 경우 해킹시도로 판단하고 세션 폐기
+				if (org.token != sessionInfo.token) {
+					// token이 불일치한 경우 해킹시도로 판단하고 세션 폐기
 					self.unregisterSession(sessionInfo.key);
 					invalid = true;
 				}
 			}
 			else {
-				// 다른 요청에 의해 세션이 폐기된 경우 (해킹시도로 인한 nonce 불일치 등)
+				// 다른 요청에 의해 세션이 폐기된 경우 (해킹시도로 인한 token 불일치 등)
 				// 이 갱신 요청도 취소하고 쿠키 폐기
-				self.unregisterSession(sessionInfo.key);
+				self.unregisterSession();
 				invalid = true;
 			}
 			
@@ -201,10 +200,13 @@ function resetNonce(sessionInfo, callback) {
 				return;
 			}
 			
-			// 3. 유효한 세션인 경우 nonce를 갱신
-			sessionInfo.nonce = Math.random();
+			// 3. 유효한 세션인 경우 token을 갱신
+			do {
+				var newToken = Math.random();
+			} while(sessionInfo.token == newToken);
+			sessionInfo.token = newToken;
 			redis.multi()
-				.setex(sessionInfo.key, expireSec, JSON.stringify(sessionInfo))
+				.setex(sessionInfo.key, ExpireSec, JSON.stringify(sessionInfo))
 				.exec(function(err, replies) {
 					pool.close(redis);
 					if (err)
@@ -239,7 +241,7 @@ function unregisterSession(sessionKey) {
 exports.sessionManager = function() {
 	return function(req, res, next) {
 		res.registerSession = registerSession;
-		res.resetNonce = resetNonce;
+		res.reissueToken = reissueToken;
 		res.unregisterSession = unregisterSession;
 		req.session = null;
 
@@ -262,7 +264,7 @@ exports.sessionManager = function() {
 		pool.open(function(redis) {
 			redis.batch([
 				["get", sessionCookie.key],
-				["expire", sessionCookie.key, expireSec]
+				["expire", sessionCookie.key, ExpireSec]
 			]).exec(function(err, replies) {
 				pool.close(redis);
 				if (err) {
@@ -276,9 +278,9 @@ exports.sessionManager = function() {
 						next();
 					}
 					else {
-						// nonce 검사
+						// token 검사
 						var session = JSON.parse(replies[0]);
-						if (session.nonce == sessionCookie.nonce) {
+						if (session.token == sessionCookie.token) {
 							// 세션 인증 성공
 							req.session = session;
 							next();

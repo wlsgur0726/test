@@ -28,8 +28,8 @@
 						console.log("error:" + status + ", " + errorThrown);
 						console.log(res);
 					}
-				}); // $.ajax
-			}
+				});
+			} // if (params.number)
 			
 			$("#btn_ok").click(function() {
 				$.ajax({
@@ -49,8 +49,8 @@
 						console.log("error:" + status + ", " + errorThrown);
 						console.log(res);
 					}
-				}); // $.ajax
-			});
+				});
+			}); // $("#btn_ok").click
 		}); // weboard.main
 	</script>
 

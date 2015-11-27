@@ -29,18 +29,18 @@ weboard.main = function(main_routine) {
 		var params = weboard.getUrlParameter();
 		var session = weboard.getSession();
 		if (session) {
-			// nonce 갱신
+			// token 갱신
 			$.ajax({
 				url: "/auth",
-				type: "get",
+				type: "put",
 				success: function(data, status) {
-					console.log("success " + status);;
+					console.log("[reissue token] " + status);;
 					session = weboard.getSession();
 					main_routine($, params, session);
 				},
 				error: function(jqXHR, status, errorThrown ) {
 					var res = jqXHR.responseJSON;
-					console.log("error:" + status + ", " + errorThrown);
+					console.log("[reissue token] " + status + ", " + errorThrown);
 					console.log(res);
 					alert(res ? res.message : errorThrown);
 					main_routine($, params, null);

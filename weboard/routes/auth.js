@@ -1,35 +1,21 @@
 var express = require('express');
 var HTTPStatus = require('http-status');
+var crypto = require("crypto");
 var db = require("../db");
 var NewError = require("../error");
-var router = express.Router();
-var crypto = require("crypto");
 var base64 = require("../public/javascripts/base64");
+var router = express.Router();
+
 
 router.get("/", function(req, res, next) {
+	// 신규 세션 발급
 	if (req.session) {
-		// 이미 인증이 되어 있고, nonce를 재발급하는 경우
-		res.resetNonce(req.session, function(err, success) {
-			if (err) {
-				// redis error
-				console.error(err);
-				next(NewError(HTTPStatus.INTERNAL_SERVER_ERROR, err));
-			}
-			else if (success) {
-				// 성공
-				res.send();
-			}
-			else {
-				// 해킹시도 감지
-				res.status(HTTPStatus.UNAUTHORIZED).send({
-					message: "재인증이 필요합니다."
-				});
-			}
+		res.status(HTTPStatus.BAD_REQUEST).send({
+			message: "로그아웃 후 요청하세요."
 		});
 		return;
 	}
 	
-	// 신규 세션 발급
 	var authHeader = req.get("Authorization");
 	if (authHeader)
 		authHeader = JSON.parse(authHeader);
@@ -75,7 +61,9 @@ router.get("/", function(req, res, next) {
 			  });
 });
 
+
 router.post("/", function(req, res, next) {
+	// 회원 가입
 	if (req.session) {
 		res.status(HTTPStatus.BAD_REQUEST).send({
 			message: "로그아웃 후 요청하세요."
@@ -111,14 +99,40 @@ router.post("/", function(req, res, next) {
 	});
 });
 
-router.delete("/", function(req, res, next) {
+
+router.put("/", function(req, res, next) {
+	// 세션의 인증토큰 갱신
 	if (req.session == null) {
 		res.status(HTTPStatus.UNAUTHORIZED).send({
-			message: "권한이 없습니다."
+			message: "세션이 만료되었습니다."
 		});
 		return;
 	}
-	res.unregisterSession(req.session.key);
+
+	res.reissueToken(req.session, function(err, success) {
+		if (err) {
+			// redis error
+			console.error(err);
+			next(NewError(HTTPStatus.INTERNAL_SERVER_ERROR, err));
+		}
+		else if (success) {
+			// 성공
+			res.send();
+		}
+		else {
+			// 해킹시도 감지
+			res.status(HTTPStatus.UNAUTHORIZED).send({
+				message: "재인증이 필요합니다."
+			});
+		}
+	});
+});
+
+
+router.delete("/", function(req, res, next) {
+	// 세션 종료
+	if (req.session)
+		res.unregisterSession(req.session.key);
 	res.send();
 });
 
