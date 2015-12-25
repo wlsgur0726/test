@@ -1,61 +1,19 @@
 #include <iostream>
 #include <vector>
 #include <memory>
+#include <functional>
+#include <tuple>
 using namespace std;
 
 #define USE_MOVE_CONSTRUCTOR
 
-/*
-    MSVC2013 - USE_MOVE_CONSTRUCTOR(O)           MSVC2013 - USE_MOVE_CONSTRUCTOR(X)             GCC - USE_MOVE_CONSTRUCTOR(O)               GCC - USE_MOVE_CONSTRUCTOR(X)
-================================================================================================================================================================================
-[Test01] Start                          .    [Test01] Start                          .    [Test01] Start                          .    [Test01] Start                          .
-   Pramater Constructor  000000000024FC80       Pramater Constructor  000000000027FBE0       Pramater Constructor  0x7fff7e34e3e0       Pramater Constructor  0x7fffc531b900
-   Move Constructor      000000000024FCB8       Copy Constructor      000000000027FC18       Destructor            0x7fff7e34e3e0       Destructor            0x7fffc531b900
-   Destructor            000000000024FC80       Destructor            000000000027FBE0    -----------------------------------------    -----------------------------------------
-   Destructor            000000000024FCB8       Destructor            000000000027FC18        
------------------------------------------    -----------------------------------------    [Test02] Start                          .    [Test02] Start                          .
-                                                                                             Pramater Constructor  0x7fff7e34e3e0       Pramater Constructor  0x7fffc531b900
-[Test02] Start                          .    [Test02] Start                          .       Copy Constructor      0x7fff7e34e3d0       Copy Constructor      0x7fffc531b8f0
-   Pramater Constructor  000000000024FC78       Pramater Constructor  000000000027FBD8       Destructor            0x7fff7e34e3d0       Destructor            0x7fffc531b8f0
-   Copy Constructor      000000000024FCC8       Copy Constructor      000000000027FC28       Destructor            0x7fff7e34e3e0       Destructor            0x7fffc531b900
-   Destructor            000000000024FCC8       Destructor            000000000027FC28    -----------------------------------------    -----------------------------------------
-   Destructor            000000000024FC78       Destructor            000000000027FBD8        
------------------------------------------    -----------------------------------------    [Test03] Start                          .    [Test03] Start                          .
-                                                                                             Basic Constructor     0x7fff7e34e3f0       Basic Constructor     0x7fffc531b910
-[Test03] Start                          .    [Test03] Start                          .       Basic Constructor     0x7fff7e34e3e0       Basic Constructor     0x7fffc531b900
-   Basic Constructor     000000000024FCB8       Basic Constructor     000000000027FC18       Equal Operator        0x7fff7e34e3e0       Equal Operator        0x7fffc531b900
-   Basic Constructor     000000000024FD08       Basic Constructor     000000000027FC68       Destructor            0x7fff7e34e3e0       Destructor            0x7fffc531b900
-   Equal Operator        000000000024FD08       Equal Operator        000000000027FC68       Destructor            0x7fff7e34e3f0       Destructor            0x7fffc531b910
-   Destructor            000000000024FD08       Destructor            000000000027FC68    -----------------------------------------    -----------------------------------------
-   Destructor            000000000024FCB8       Destructor            000000000027FC18        
------------------------------------------    -----------------------------------------    [Test04] Start                          .    [Test04] Start                          .
-                                                                                             Pramater Constructor  0x7fff7e34e3e0       Pramater Constructor  0x7fffc531b900
-[Test04] Start                          .    [Test04] Start                          .       Destructor            0x7fff7e34e3e0       Destructor            0x7fffc531b900
-   Pramater Constructor  000000000024FCC8       Pramater Constructor  000000000027FC28    -----------------------------------------    -----------------------------------------
-   Move Constructor      000000000024FC88       Copy Constructor      000000000027FBE8        
-   Destructor            000000000024FCC8       Destructor            000000000027FC28    [Test05] Start                          .    [Test05] Start                          .
-   Destructor            000000000024FC88       Destructor            000000000027FBE8       Pramater Constructor  0x7fff7e34e3e0       Pramater Constructor  0x7fffc531b900
------------------------------------------    -----------------------------------------       Member Function       0x7fff7e34e3e0       Member Function       0x7fffc531b900
-                                                                                             Copy Constructor      0x7fff7e34e3d0       Copy Constructor      0x7fffc531b8f0
-[Test05] Start                          .    [Test05] Start                          .       Destructor            0x7fff7e34e3e0       Destructor            0x7fffc531b900
-   Pramater Constructor  000000000024FCC8       Pramater Constructor  000000000027FC28       Destructor            0x7fff7e34e3d0       Destructor            0x7fffc531b8f0
-   Member Function       000000000024FCC8       Member Function       000000000027FC28    -----------------------------------------    -----------------------------------------
-   Copy Constructor      000000000024FC88       Copy Constructor      000000000027FBE8        
-   Destructor            000000000024FCC8       Destructor            000000000027FC28    [Test06] Start                          .    [Test06] Start                          .
-   Destructor            000000000024FC88       Destructor            000000000027FBE8       Basic Constructor     0x7fff7e34e3f0       Basic Constructor     0x7fffc531b910
------------------------------------------    -----------------------------------------       Basic Constructor     0x7fff7e34e3e0       Basic Constructor     0x7fffc531b900
-                                                                                             Move Operator         0x7fff7e34e3f0       Equal Operator        0x7fffc531b910
-[Test06] Start                          .    [Test06] Start                          .       Destructor            0x7fff7e34e3e0       Destructor            0x7fffc531b900
-   Basic Constructor     000000000024FCB8       Basic Constructor     000000000027FC18       Destructor            0x7fff7e34e3f0       Destructor            0x7fffc531b910
-   Basic Constructor     000000000024FD08       Basic Constructor     000000000027FC68    -----------------------------------------    -----------------------------------------
-   Move Operator         000000000024FCB8       Equal Operator        000000000027FC18        
-   Destructor            000000000024FD08       Destructor            000000000027FC68        
-   Destructor            000000000024FCB8       Destructor            000000000027FC18        
------------------------------------------    -----------------------------------------        
-
-*/
-
 #define _cout cout << "   "
+template <typename T>
+void PrintStep(T n)
+{
+	_cout << "(Step " << n << ")\n";
+}
+
 struct Obj
 {
 	int i;
@@ -110,32 +68,32 @@ struct Obj
 
 #define TestStart(TestName)																			\
 	{																								\
-		cout << "\n[" << TestName << "] Start                                             .\n";		\
+		cout << "\n[" << TestName << "] Start\n";													\
 		{																							\
 
 #define TestEnd																						\
-			_cout << "exit scope\n";																\
+			_cout << "(exit scope)\n";																\
 		}																							\
 		cout << "------------------------------------------------------------\n";					\
 	}																								\
 
 
 
-Obj Func1() {
-	_cout << "init...\n";
+Obj VectorReturnFunc1() {
+	_cout << "(" << __FUNCTION__ << ")\n";
 	Obj temp;
 	temp.p.reset(new Obj);
-	_cout << "return...\n";
+	_cout << "(return " << __FUNCTION__ << ")\n";
 	return temp;
 }
 
-std::vector<Obj> Func2() {
-	_cout << "init...\n";
+std::vector<Obj> VectorReturnFunc2() {
+	_cout << "(" << __FUNCTION__ << ")\n";
 	std::vector<Obj> v;
 	v.resize(3);
 	for (auto& o : v)
 		o.p.reset(new Obj);
-	_cout << "return...\n";
+	_cout << "(return " << __FUNCTION__ << ")\n";
 	return v;
 }
 
@@ -178,17 +136,318 @@ int main() {
 
 	TestStart("Test07")
 		Obj o;
+
+		PrintStep(1);
 		o.p.reset(new Obj);
-		o = Func1();
+
+		PrintStep(2);
+		o = VectorReturnFunc1();
 	TestEnd
 
 
 	TestStart("Test08")
 		std::vector<Obj> v;
+
+		PrintStep(1);
 		v.resize(1);
+
+		PrintStep(2);
 		v[0].p.reset(new Obj);
-		v = Func2();
+
+		PrintStep(3);
+		v = VectorReturnFunc2();
 	TestEnd
 
+
+	TestStart("Test09")
+		typedef std::function<void()> Func;
+		Obj o(123, "");
+
+		PrintStep(1);
+		auto func = [o]()
+		{
+			_cout << "call func " << o.i << "\n";
+		};
+
+		PrintStep(2);
+		std::vector<Func> v;
+		v.push_back(func);
+
+		PrintStep(3);
+		func();
+	TestEnd
+
+
+	TestStart("Test10")
+		typedef std::tuple<Obj, Obj, Obj> Tuple;
+
+		PrintStep(1);
+		Tuple t1;
+
+		PrintStep(2);
+		Tuple t2 = std::move(t1);
+	TestEnd
 	return 0;
 }
+
+/*
+                                                        Visual Studio 2015
+                 USE_MOVE_CONSTRUCTOR (O)                                            USE_MOVE_CONSTRUCTOR (X)
+=================================================================================================================================
+
+[Test01] Start                                                  	[Test01] Start
+   Pramater Constructor  000000000028E6E0                       	   Pramater Constructor  00000000002DE8E0
+   (exit scope)                                                 	   (exit scope)
+   Destructor            000000000028E6E0                       	   Destructor            00000000002DE8E0
+------------------------------------------------------------    	------------------------------------------------------------
+                                                                	
+[Test02] Start                                                  	[Test02] Start
+   Pramater Constructor  000000000028E740                       	   Pramater Constructor  00000000002DE940
+   Copy Constructor      000000000028E7A0   000000000028E740    	   Copy Constructor      00000000002DE9A0   00000000002DE940
+   (exit scope)                                                 	   (exit scope)
+   Destructor            000000000028E7A0                       	   Destructor            00000000002DE9A0
+   Destructor            000000000028E740                       	   Destructor            00000000002DE940
+------------------------------------------------------------    	------------------------------------------------------------
+                                                                	
+[Test03] Start                                                  	[Test03] Start
+   Basic Constructor     000000000028E800                       	   Basic Constructor     00000000002DEA00
+   Basic Constructor     000000000028E860                       	   Basic Constructor     00000000002DEA60
+   Substitute Operator   000000000028E860   000000000028E800    	   Substitute Operator   00000000002DEA60   00000000002DEA00
+   (exit scope)                                                 	   (exit scope)
+   Destructor            000000000028E860                       	   Destructor            00000000002DEA60
+   Destructor            000000000028E800                       	   Destructor            00000000002DEA00
+------------------------------------------------------------    	------------------------------------------------------------
+                                                                	
+[Test04] Start                                                  	[Test04] Start
+   Pramater Constructor  000000000028E8C0                       	   Pramater Constructor  00000000002DEAC0
+   (exit scope)                                                 	   (exit scope)
+   Destructor            000000000028E8C0                       	   Destructor            00000000002DEAC0
+------------------------------------------------------------    	------------------------------------------------------------
+                                                                	
+[Test05] Start                                                  	[Test05] Start
+   Pramater Constructor  000000000028F340                       	   Pramater Constructor  00000000002DF540
+   Member Function       000000000028F340                       	   Member Function       00000000002DF540
+   Copy Constructor      000000000028E920   000000000028F340    	   Copy Constructor      00000000002DEB20   00000000002DF540
+   Destructor            000000000028F340                       	   Destructor            00000000002DF540
+   (exit scope)                                                 	   (exit scope)
+   Destructor            000000000028E920                       	   Destructor            00000000002DEB20
+------------------------------------------------------------    	------------------------------------------------------------
+                                                                	
+[Test06] Start                                                  	[Test06] Start
+   Basic Constructor     000000000028E980                       	   Basic Constructor     00000000002DEB80
+   Basic Constructor     000000000028E9E0                       	   Basic Constructor     00000000002DEBE0
+   Move Operator         000000000028E980   000000000028E9E0    	   Substitute Operator   00000000002DEB80   00000000002DEBE0
+   (exit scope)                                                 	   (exit scope)
+   Destructor            000000000028E9E0                       	   Destructor            00000000002DEBE0
+   Destructor            000000000028E980                       	   Destructor            00000000002DEB80
+------------------------------------------------------------    	------------------------------------------------------------
+                                                                	
+[Test07] Start                                                  	[Test07] Start
+   Basic Constructor     000000000028EA40                       	   Basic Constructor     00000000002DEC40
+   (Step 1)                                                     	   (Step 1)
+   Basic Constructor     00000000000BE570                       	   Basic Constructor     00000000003CE570
+   (Step 2)                                                     	   (Step 2)
+   (VectorReturnFunc1)                                          	   (VectorReturnFunc1)
+   Basic Constructor     000000000028E4F0                       	   Basic Constructor     00000000002DE6F0
+   Basic Constructor     00000000000BE5F0                       	   Basic Constructor     00000000003CE5F0
+   (return VectorReturnFunc1)                                   	   (return VectorReturnFunc1)
+   Move Constructor      000000000028F440   000000000028E4F0    	   Copy Constructor      00000000002DF640   00000000002DE6F0
+   Destructor            000000000028E4F0                       	   Destructor            00000000002DE6F0
+   Move Operator         000000000028EA40   000000000028F440    	   Destructor            00000000003CE570
+   Destructor            00000000000BE570                       	   Substitute Operator   00000000002DEC40   00000000002DF640
+   Destructor            000000000028F440                       	   Destructor            00000000002DF640
+   (exit scope)                                                 	   (exit scope)
+   Destructor            00000000000BE5F0                       	   Destructor            00000000003CE5F0
+   Destructor            000000000028EA40                       	   Destructor            00000000002DEC40
+------------------------------------------------------------    	------------------------------------------------------------
+                                                                	
+[Test08] Start                                                  	[Test08] Start
+   (Step 1)                                                     	   (Step 1)
+   Basic Constructor     00000000000BE570                       	   Basic Constructor     00000000003CE570
+   (Step 2)                                                     	   (Step 2)
+   Basic Constructor     00000000000BE5F0                       	   Basic Constructor     00000000003CE5F0
+   (Step 3)                                                     	   (Step 3)
+   (VectorReturnFunc2)                                          	   (VectorReturnFunc2)
+   Basic Constructor     00000000000BF670                       	   Basic Constructor     00000000003CF670
+   Basic Constructor     00000000000BF6B0                       	   Basic Constructor     00000000003CF6B0
+   Basic Constructor     00000000000BF6F0                       	   Basic Constructor     00000000003CF6F0
+   Basic Constructor     00000000000BF770                       	   Basic Constructor     00000000003CF770
+   Basic Constructor     00000000000BF7F0                       	   Basic Constructor     00000000003CF7F0
+   Basic Constructor     00000000000BF8A0                       	   Basic Constructor     00000000003CF8A0
+   (return VectorReturnFunc2)                                   	   (return VectorReturnFunc2)
+   Destructor            00000000000BE5F0                       	   Destructor            00000000003CE5F0
+   Destructor            00000000000BE570                       	   Destructor            00000000003CE570
+   (exit scope)                                                 	   (exit scope)
+   Destructor            00000000000BF770                       	   Destructor            00000000003CF770
+   Destructor            00000000000BF670                       	   Destructor            00000000003CF670
+   Destructor            00000000000BF7F0                       	   Destructor            00000000003CF7F0
+   Destructor            00000000000BF6B0                       	   Destructor            00000000003CF6B0
+   Destructor            00000000000BF8A0                       	   Destructor            00000000003CF8A0
+   Destructor            00000000000BF6F0                       	   Destructor            00000000003CF6F0
+------------------------------------------------------------    	------------------------------------------------------------
+                                                                	
+[Test09] Start                                                  	[Test09] Start
+   Pramater Constructor  000000000028EAE0                       	   Pramater Constructor  00000000002DECE0
+   (Step 1)                                                     	   (Step 1)
+   Copy Constructor      000000000028EB40   000000000028EAE0    	   Copy Constructor      00000000002DED40   00000000002DECE0
+   (Step 2)                                                     	   (Step 2)
+   Copy Constructor      000000000028F5D8   000000000028EB40    	   Copy Constructor      00000000002DF7D8   00000000002DED40
+   Move Constructor      00000000000BE578   000000000028F5D8    	   Copy Constructor      00000000003CE578   00000000002DF7D8
+   Destructor            000000000028F5D8                       	   Destructor            00000000002DF7D8
+   (Step 3)                                                     	   (Step 3)
+   call func 123                                                	   call func 123
+   (exit scope)                                                 	   (exit scope)
+   Destructor            00000000000BE578                       	   Destructor            00000000003CE578
+   Destructor            000000000028EB40                       	   Destructor            00000000002DED40
+   Destructor            000000000028EAE0                       	   Destructor            00000000002DECE0
+------------------------------------------------------------    	------------------------------------------------------------
+                                                                	
+[Test10] Start                                                  	[Test10] Start
+   (Step 1)                                                     	   (Step 1)
+   Basic Constructor     000000000028EBE0                       	   Basic Constructor     00000000002DEDE0
+   Basic Constructor     000000000028EC20                       	   Basic Constructor     00000000002DEE20
+   Basic Constructor     000000000028EC60                       	   Basic Constructor     00000000002DEE60
+   (Step 2)                                                     	   (Step 2)
+   Move Constructor      000000000028ECC0   000000000028EBE0    	   Copy Constructor      00000000002DEEC0   00000000002DEDE0
+   Move Constructor      000000000028ED00   000000000028EC20    	   Copy Constructor      00000000002DEF00   00000000002DEE20
+   Move Constructor      000000000028ED40   000000000028EC60    	   Copy Constructor      00000000002DEF40   00000000002DEE60
+   (exit scope)                                                 	   (exit scope)
+   Destructor            000000000028ED40                       	   Destructor            00000000002DEF40
+   Destructor            000000000028ED00                       	   Destructor            00000000002DEF00
+   Destructor            000000000028ECC0                       	   Destructor            00000000002DEEC0
+   Destructor            000000000028EC60                       	   Destructor            00000000002DEE60
+   Destructor            000000000028EC20                       	   Destructor            00000000002DEE20
+   Destructor            000000000028EBE0                       	   Destructor            00000000002DEDE0
+------------------------------------------------------------    	------------------------------------------------------------
+*/
+
+
+
+/*
+                                              GCC 4.8.3 20140911 (Red Hat 4.8.3-9)
+                 USE_MOVE_CONSTRUCTOR (O)                                            USE_MOVE_CONSTRUCTOR (X)
+=================================================================================================================================
+
+[Test01] Start                                                  	[Test01] Start
+   Pramater Constructor  0x7ffd825ad0e0                         	   Pramater Constructor  0x7ffecb11ad70
+   (exit scope)                                                 	   (exit scope)
+   Destructor            0x7ffd825ad0e0                         	   Destructor            0x7ffecb11ad70
+------------------------------------------------------------    	------------------------------------------------------------
+                                                                	
+[Test02] Start                                                  	[Test02] Start
+   Pramater Constructor  0x7ffd825ad080                         	   Pramater Constructor  0x7ffecb11ad10
+   Copy Constructor      0x7ffd825ad0e0   0x7ffd825ad080        	   Copy Constructor      0x7ffecb11ad70   0x7ffecb11ad10
+   (exit scope)                                                 	   (exit scope)
+   Destructor            0x7ffd825ad0e0                         	   Destructor            0x7ffecb11ad70
+   Destructor            0x7ffd825ad080                         	   Destructor            0x7ffecb11ad10
+------------------------------------------------------------    	------------------------------------------------------------
+                                                                	
+[Test03] Start                                                  	[Test03] Start
+   Basic Constructor     0x7ffd825ad080                         	   Basic Constructor     0x7ffecb11ad10
+   Basic Constructor     0x7ffd825ad0e0                         	   Basic Constructor     0x7ffecb11ad70
+   Substitute Operator   0x7ffd825ad0e0   0x7ffd825ad080        	   Substitute Operator   0x7ffecb11ad70   0x7ffecb11ad10
+   (exit scope)                                                 	   (exit scope)
+   Destructor            0x7ffd825ad0e0                         	   Destructor            0x7ffecb11ad70
+   Destructor            0x7ffd825ad080                         	   Destructor            0x7ffecb11ad10
+------------------------------------------------------------    	------------------------------------------------------------
+                                                                	
+[Test04] Start                                                  	[Test04] Start
+   Pramater Constructor  0x7ffd825ad0e0                         	   Pramater Constructor  0x7ffecb11ad70
+   (exit scope)                                                 	   (exit scope)
+   Destructor            0x7ffd825ad0e0                         	   Destructor            0x7ffecb11ad70
+------------------------------------------------------------    	------------------------------------------------------------
+                                                                	
+[Test05] Start                                                  	[Test05] Start
+   Pramater Constructor  0x7ffd825ad1b0                         	   Pramater Constructor  0x7ffecb11ae40
+   Member Function       0x7ffd825ad1b0                         	   Member Function       0x7ffecb11ae40
+   Copy Constructor      0x7ffd825ad0e0   0x7ffd825ad1b0        	   Copy Constructor      0x7ffecb11ad70   0x7ffecb11ae40
+   Destructor            0x7ffd825ad1b0                         	   Destructor            0x7ffecb11ae40
+   (exit scope)                                                 	   (exit scope)
+   Destructor            0x7ffd825ad0e0                         	   Destructor            0x7ffecb11ad70
+------------------------------------------------------------    	------------------------------------------------------------
+                                                                	
+[Test06] Start                                                  	[Test06] Start
+   Basic Constructor     0x7ffd825ad080                         	   Basic Constructor     0x7ffecb11ad10
+   Basic Constructor     0x7ffd825ad0e0                         	   Basic Constructor     0x7ffecb11ad70
+   Move Operator         0x7ffd825ad080   0x7ffd825ad0e0        	   Substitute Operator   0x7ffecb11ad10   0x7ffecb11ad70
+   (exit scope)                                                 	   (exit scope)
+   Destructor            0x7ffd825ad0e0                         	   Destructor            0x7ffecb11ad70
+   Destructor            0x7ffd825ad080                         	   Destructor            0x7ffecb11ad10
+------------------------------------------------------------    	------------------------------------------------------------
+                                                                	
+[Test07] Start                                                  	[Test07] Start
+   Basic Constructor     0x7ffd825ad0e0                         	   Basic Constructor     0x7ffecb11ad70
+   (Step 1)                                                     	   (Step 1)
+   Basic Constructor     0x1abb010                              	   Basic Constructor     0x2144010
+   (Step 2)                                                     	   (Step 2)
+   (VectorReturnFunc1)                                          	   (VectorReturnFunc1)
+   Basic Constructor     0x7ffd825ad1e0                         	   Basic Constructor     0x7ffecb11ae70
+   Basic Constructor     0x1abb060                              	   Basic Constructor     0x2144060
+   (return VectorReturnFunc1)                                   	   (return VectorReturnFunc1)
+   Move Operator         0x7ffd825ad0e0   0x7ffd825ad1e0        	   Destructor            0x2144010
+   Destructor            0x1abb010                              	   Substitute Operator   0x7ffecb11ad70   0x7ffecb11ae70
+   Destructor            0x7ffd825ad1e0                         	   Destructor            0x7ffecb11ae70
+   (exit scope)                                                 	   (exit scope)
+   Destructor            0x1abb060                              	   Destructor            0x2144060
+   Destructor            0x7ffd825ad0e0                         	   Destructor            0x7ffecb11ad70
+------------------------------------------------------------    	------------------------------------------------------------
+                                                                	
+[Test08] Start                                                  	[Test08] Start
+   (Step 1)                                                     	   (Step 1)
+   Basic Constructor     0x1abb060                              	   Basic Constructor     0x2144060
+   (Step 2)                                                     	   (Step 2)
+   Basic Constructor     0x1abb010                              	   Basic Constructor     0x2144010
+   (Step 3)                                                     	   (Step 3)
+   (VectorReturnFunc2)                                          	   (VectorReturnFunc2)
+   Basic Constructor     0x1abb0b0                              	   Basic Constructor     0x21440b0
+   Basic Constructor     0x1abb0d0                              	   Basic Constructor     0x21440d0
+   Basic Constructor     0x1abb0f0                              	   Basic Constructor     0x21440f0
+   Basic Constructor     0x1abb120                              	   Basic Constructor     0x2144120
+   Basic Constructor     0x1abb150                              	   Basic Constructor     0x2144150
+   Basic Constructor     0x1abb1a0                              	   Basic Constructor     0x21441a0
+   (return VectorReturnFunc2)                                   	   (return VectorReturnFunc2)
+   Destructor            0x1abb010                              	   Destructor            0x2144010
+   Destructor            0x1abb060                              	   Destructor            0x2144060
+   (exit scope)                                                 	   (exit scope)
+   Destructor            0x1abb120                              	   Destructor            0x2144120
+   Destructor            0x1abb0b0                              	   Destructor            0x21440b0
+   Destructor            0x1abb150                              	   Destructor            0x2144150
+   Destructor            0x1abb0d0                              	   Destructor            0x21440d0
+   Destructor            0x1abb1a0                              	   Destructor            0x21441a0
+   Destructor            0x1abb0f0                              	   Destructor            0x21440f0
+------------------------------------------------------------    	------------------------------------------------------------
+                                                                	
+[Test09] Start                                                  	[Test09] Start
+   Pramater Constructor  0x7ffd825ad080                         	   Pramater Constructor  0x7ffecb11ad10
+   (Step 1)                                                     	   (Step 1)
+   Copy Constructor      0x7ffd825ad0e0   0x7ffd825ad080        	   Copy Constructor      0x7ffecb11ad70   0x7ffecb11ad10
+   (Step 2)                                                     	   (Step 2)
+   Copy Constructor      0x7ffd825ad250   0x7ffd825ad0e0        	   Copy Constructor      0x7ffecb11aee0   0x7ffecb11ad70
+   Move Constructor      0x1abb1a0   0x7ffd825ad250             	   Copy Constructor      0x21441a0   0x7ffecb11aee0
+   Destructor            0x7ffd825ad250                         	   Destructor            0x7ffecb11aee0
+   (Step 3)                                                     	   (Step 3)
+   call func 123                                                	   call func 123
+   (exit scope)                                                 	   (exit scope)
+   Destructor            0x1abb1a0                              	   Destructor            0x21441a0
+   Destructor            0x7ffd825ad0e0                         	   Destructor            0x7ffecb11ad70
+   Destructor            0x7ffd825ad080                         	   Destructor            0x7ffecb11ad10
+------------------------------------------------------------    	------------------------------------------------------------
+                                                                	
+[Test10] Start                                                  	[Test10] Start
+   (Step 1)                                                     	   (Step 1)
+   Basic Constructor     0x7ffd825ad080                         	   Basic Constructor     0x7ffecb11ad10
+   Basic Constructor     0x7ffd825ad0a0                         	   Basic Constructor     0x7ffecb11ad30
+   Basic Constructor     0x7ffd825ad0c0                         	   Basic Constructor     0x7ffecb11ad50
+   (Step 2)                                                     	   (Step 2)
+   Move Constructor      0x7ffd825ad0e0   0x7ffd825ad080        	   Copy Constructor      0x7ffecb11ad70   0x7ffecb11ad10
+   Move Constructor      0x7ffd825ad100   0x7ffd825ad0a0        	   Copy Constructor      0x7ffecb11ad90   0x7ffecb11ad30
+   Move Constructor      0x7ffd825ad120   0x7ffd825ad0c0        	   Copy Constructor      0x7ffecb11adb0   0x7ffecb11ad50
+   (exit scope)                                                 	   (exit scope)
+   Destructor            0x7ffd825ad120                         	   Destructor            0x7ffecb11adb0
+   Destructor            0x7ffd825ad100                         	   Destructor            0x7ffecb11ad90
+   Destructor            0x7ffd825ad0e0                         	   Destructor            0x7ffecb11ad70
+   Destructor            0x7ffd825ad0c0                         	   Destructor            0x7ffecb11ad50
+   Destructor            0x7ffd825ad0a0                         	   Destructor            0x7ffecb11ad30
+   Destructor            0x7ffd825ad080                         	   Destructor            0x7ffecb11ad10
+------------------------------------------------------------    	------------------------------------------------------------
+*/
