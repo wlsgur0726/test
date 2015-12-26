@@ -5,7 +5,7 @@
 #include <tuple>
 using namespace std;
 
-#define USE_MOVE_CONSTRUCTOR
+#define USE_MOVE_OPERATION
 
 #define _cout cout << "   "
 template <typename T>
@@ -45,7 +45,7 @@ struct Obj
 		_cout << "Substitute Operator   " << this << "   " << &o << endl;
 		return *this;
 	}
-#ifdef USE_MOVE_CONSTRUCTOR
+#ifdef USE_MOVE_OPERATION
 	Obj(Obj&& o) {
 		std::swap(i, o.i);
 		std::swap(s, o.s);
@@ -80,20 +80,20 @@ struct Obj
 
 
 Obj VectorReturnFunc1() {
-	_cout << "(" << __FUNCTION__ << ")\n";
+	PrintStep(__FUNCTION__);
 	Obj temp;
 	temp.p.reset(new Obj);
-	_cout << "(return " << __FUNCTION__ << ")\n";
+	PrintStep("return " __FUNCTION__);
 	return temp;
 }
 
 std::vector<Obj> VectorReturnFunc2() {
-	_cout << "(" << __FUNCTION__ << ")\n";
+	PrintStep(__FUNCTION__);
 	std::vector<Obj> v;
 	v.resize(3);
 	for (auto& o : v)
 		o.p.reset(new Obj);
-	_cout << "(return " << __FUNCTION__ << ")\n";
+	PrintStep("return " __FUNCTION__);
 	return v;
 }
 
@@ -164,21 +164,53 @@ int main() {
 		Obj o(123, "");
 
 		PrintStep(1);
-		auto func = [o]()
+		auto func1 = [o]()
 		{
-			_cout << "call func " << o.i << "\n";
+			_cout << "call func1 " << o.i << "\n";
 		};
 
 		PrintStep(2);
-		std::vector<Func> v;
-		v.push_back(func);
+		auto func2 = [mv = std::move(o)]() // C++14
+		{
+			_cout << "call func2 " << mv.i << "\n";
+		};
 
 		PrintStep(3);
-		func();
+		std::vector<Func> v;
+		v.push_back(func1);
+
+		PrintStep(4);
+		v.push_back(func2);
+
+		PrintStep(5);
+		func1();
+		func2();
 	TestEnd
 
 
 	TestStart("Test10")
+		typedef std::function<void()> Func;
+		Obj o(123, "");
+
+		PrintStep(1);
+		auto func = [mv = std::move(o)]() // C++14
+		{
+			_cout << "call func " << mv.i << "\n";
+		};
+
+		PrintStep(2);
+		Func f1 = std::move(func);
+
+		PrintStep(3);
+		Func f2 = std::move(f1);
+
+		PrintStep(4);
+		Func f3 = f2;
+		f3();
+	TestEnd
+
+
+	TestStart("Test11")
 		typedef std::tuple<Obj, Obj, Obj> Tuple;
 
 		PrintStep(1);
@@ -192,7 +224,7 @@ int main() {
 
 /*
                                                         Visual Studio 2015
-                 USE_MOVE_CONSTRUCTOR (O)                                            USE_MOVE_CONSTRUCTOR (X)
+                 USE_MOVE_OPERATION (O)                                            USE_MOVE_OPERATION (X)
 =================================================================================================================================
 
 [Test01] Start                                                  	[Test01] Start
@@ -285,47 +317,13 @@ int main() {
    Destructor            00000000000BF8A0                       	   Destructor            00000000003CF8A0
    Destructor            00000000000BF6F0                       	   Destructor            00000000003CF6F0
 ------------------------------------------------------------    	------------------------------------------------------------
-                                                                	
-[Test09] Start                                                  	[Test09] Start
-   Pramater Constructor  000000000028EAE0                       	   Pramater Constructor  00000000002DECE0
-   (Step 1)                                                     	   (Step 1)
-   Copy Constructor      000000000028EB40   000000000028EAE0    	   Copy Constructor      00000000002DED40   00000000002DECE0
-   (Step 2)                                                     	   (Step 2)
-   Copy Constructor      000000000028F5D8   000000000028EB40    	   Copy Constructor      00000000002DF7D8   00000000002DED40
-   Move Constructor      00000000000BE578   000000000028F5D8    	   Copy Constructor      00000000003CE578   00000000002DF7D8
-   Destructor            000000000028F5D8                       	   Destructor            00000000002DF7D8
-   (Step 3)                                                     	   (Step 3)
-   call func 123                                                	   call func 123
-   (exit scope)                                                 	   (exit scope)
-   Destructor            00000000000BE578                       	   Destructor            00000000003CE578
-   Destructor            000000000028EB40                       	   Destructor            00000000002DED40
-   Destructor            000000000028EAE0                       	   Destructor            00000000002DECE0
-------------------------------------------------------------    	------------------------------------------------------------
-                                                                	
-[Test10] Start                                                  	[Test10] Start
-   (Step 1)                                                     	   (Step 1)
-   Basic Constructor     000000000028EBE0                       	   Basic Constructor     00000000002DEDE0
-   Basic Constructor     000000000028EC20                       	   Basic Constructor     00000000002DEE20
-   Basic Constructor     000000000028EC60                       	   Basic Constructor     00000000002DEE60
-   (Step 2)                                                     	   (Step 2)
-   Move Constructor      000000000028ECC0   000000000028EBE0    	   Copy Constructor      00000000002DEEC0   00000000002DEDE0
-   Move Constructor      000000000028ED00   000000000028EC20    	   Copy Constructor      00000000002DEF00   00000000002DEE20
-   Move Constructor      000000000028ED40   000000000028EC60    	   Copy Constructor      00000000002DEF40   00000000002DEE60
-   (exit scope)                                                 	   (exit scope)
-   Destructor            000000000028ED40                       	   Destructor            00000000002DEF40
-   Destructor            000000000028ED00                       	   Destructor            00000000002DEF00
-   Destructor            000000000028ECC0                       	   Destructor            00000000002DEEC0
-   Destructor            000000000028EC60                       	   Destructor            00000000002DEE60
-   Destructor            000000000028EC20                       	   Destructor            00000000002DEE20
-   Destructor            000000000028EBE0                       	   Destructor            00000000002DEDE0
-------------------------------------------------------------    	------------------------------------------------------------
 */
 
 
 
 /*
                                               GCC 4.8.3 20140911 (Red Hat 4.8.3-9)
-                 USE_MOVE_CONSTRUCTOR (O)                                            USE_MOVE_CONSTRUCTOR (X)
+                 USE_MOVE_OPERATION (O)                                            USE_MOVE_OPERATION (X)
 =================================================================================================================================
 
 [Test01] Start                                                  	[Test01] Start
@@ -416,47 +414,13 @@ int main() {
    Destructor            0x1abb1a0                              	   Destructor            0x21441a0
    Destructor            0x1abb0f0                              	   Destructor            0x21440f0
 ------------------------------------------------------------    	------------------------------------------------------------
-                                                                	
-[Test09] Start                                                  	[Test09] Start
-   Pramater Constructor  0x7ffd825ad080                         	   Pramater Constructor  0x7ffecb11ad10
-   (Step 1)                                                     	   (Step 1)
-   Copy Constructor      0x7ffd825ad0e0   0x7ffd825ad080        	   Copy Constructor      0x7ffecb11ad70   0x7ffecb11ad10
-   (Step 2)                                                     	   (Step 2)
-   Copy Constructor      0x7ffd825ad250   0x7ffd825ad0e0        	   Copy Constructor      0x7ffecb11aee0   0x7ffecb11ad70
-   Move Constructor      0x1abb1a0   0x7ffd825ad250             	   Copy Constructor      0x21441a0   0x7ffecb11aee0
-   Destructor            0x7ffd825ad250                         	   Destructor            0x7ffecb11aee0
-   (Step 3)                                                     	   (Step 3)
-   call func 123                                                	   call func 123
-   (exit scope)                                                 	   (exit scope)
-   Destructor            0x1abb1a0                              	   Destructor            0x21441a0
-   Destructor            0x7ffd825ad0e0                         	   Destructor            0x7ffecb11ad70
-   Destructor            0x7ffd825ad080                         	   Destructor            0x7ffecb11ad10
-------------------------------------------------------------    	------------------------------------------------------------
-                                                                	
-[Test10] Start                                                  	[Test10] Start
-   (Step 1)                                                     	   (Step 1)
-   Basic Constructor     0x7ffd825ad080                         	   Basic Constructor     0x7ffecb11ad10
-   Basic Constructor     0x7ffd825ad0a0                         	   Basic Constructor     0x7ffecb11ad30
-   Basic Constructor     0x7ffd825ad0c0                         	   Basic Constructor     0x7ffecb11ad50
-   (Step 2)                                                     	   (Step 2)
-   Move Constructor      0x7ffd825ad0e0   0x7ffd825ad080        	   Copy Constructor      0x7ffecb11ad70   0x7ffecb11ad10
-   Move Constructor      0x7ffd825ad100   0x7ffd825ad0a0        	   Copy Constructor      0x7ffecb11ad90   0x7ffecb11ad30
-   Move Constructor      0x7ffd825ad120   0x7ffd825ad0c0        	   Copy Constructor      0x7ffecb11adb0   0x7ffecb11ad50
-   (exit scope)                                                 	   (exit scope)
-   Destructor            0x7ffd825ad120                         	   Destructor            0x7ffecb11adb0
-   Destructor            0x7ffd825ad100                         	   Destructor            0x7ffecb11ad90
-   Destructor            0x7ffd825ad0e0                         	   Destructor            0x7ffecb11ad70
-   Destructor            0x7ffd825ad0c0                         	   Destructor            0x7ffecb11ad50
-   Destructor            0x7ffd825ad0a0                         	   Destructor            0x7ffecb11ad30
-   Destructor            0x7ffd825ad080                         	   Destructor            0x7ffecb11ad10
-------------------------------------------------------------    	------------------------------------------------------------
 */
 
 
 
 /*
                                                             clang 3.6
-                 USE_MOVE_CONSTRUCTOR (O)                                            USE_MOVE_CONSTRUCTOR (X)
+                 USE_MOVE_OPERATION (O)                                            USE_MOVE_OPERATION (X)
 =================================================================================================================================
 
 [Test01] Start                                                  	[Test01] Start
@@ -546,39 +510,5 @@ int main() {
    Destructor            0x6bad30                               	   Destructor            0xfcbd30
    Destructor            0x6bada0                               	   Destructor            0xfcbda0
    Destructor            0x6bad00                               	   Destructor            0xfcbd00
-------------------------------------------------------------    	------------------------------------------------------------
-                                                                	
-[Test09] Start                                                  	[Test09] Start
-   Pramater Constructor  0x7fff4b7d3870                         	   Pramater Constructor  0x7fff7bf8e9a0
-   (Step 1)                                                     	   (Step 1)
-   Copy Constructor      0x7fff4b7d3828   0x7fff4b7d3870        	   Copy Constructor      0x7fff7bf8e958   0x7fff7bf8e9a0
-   (Step 2)                                                     	   (Step 2)
-   Copy Constructor      0x7fff4b7d37b0   0x7fff4b7d3828        	   Copy Constructor      0x7fff7bf8e8e0   0x7fff7bf8e958
-   Move Constructor      0x6bada8   0x7fff4b7d37b0              	   Copy Constructor      0xfcbda8   0x7fff7bf8e8e0
-   Destructor            0x7fff4b7d37b0                         	   Destructor            0x7fff7bf8e8e0
-   (Step 3)                                                     	   (Step 3)
-   call func 123                                                	   call func 123
-   (exit scope)                                                 	   (exit scope)
-   Destructor            0x6bada8                               	   Destructor            0xfcbda8
-   Destructor            0x7fff4b7d3828                         	   Destructor            0x7fff7bf8e958
-   Destructor            0x7fff4b7d3870                         	   Destructor            0x7fff7bf8e9a0
-------------------------------------------------------------    	------------------------------------------------------------
-                                                                	
-[Test10] Start                                                  	[Test10] Start
-   (Step 1)                                                     	   (Step 1)
-   Basic Constructor     0x7fff4b7d3720                         	   Basic Constructor     0x7fff7bf8e850
-   Basic Constructor     0x7fff4b7d3750                         	   Basic Constructor     0x7fff7bf8e880
-   Basic Constructor     0x7fff4b7d3780                         	   Basic Constructor     0x7fff7bf8e8b0
-   (Step 2)                                                     	   (Step 2)
-   Move Constructor      0x7fff4b7d3690   0x7fff4b7d3720        	   Copy Constructor      0x7fff7bf8e7c0   0x7fff7bf8e850
-   Move Constructor      0x7fff4b7d36c0   0x7fff4b7d3750        	   Copy Constructor      0x7fff7bf8e7f0   0x7fff7bf8e880
-   Move Constructor      0x7fff4b7d36f0   0x7fff4b7d3780        	   Copy Constructor      0x7fff7bf8e820   0x7fff7bf8e8b0
-   (exit scope)                                                 	   (exit scope)
-   Destructor            0x7fff4b7d36f0                         	   Destructor            0x7fff7bf8e820
-   Destructor            0x7fff4b7d36c0                         	   Destructor            0x7fff7bf8e7f0
-   Destructor            0x7fff4b7d3690                         	   Destructor            0x7fff7bf8e7c0
-   Destructor            0x7fff4b7d3780                         	   Destructor            0x7fff7bf8e8b0
-   Destructor            0x7fff4b7d3750                         	   Destructor            0x7fff7bf8e880
-   Destructor            0x7fff4b7d3720                         	   Destructor            0x7fff7bf8e850
 ------------------------------------------------------------    	------------------------------------------------------------
 */
