@@ -299,8 +299,6 @@ public:
 #include <stdlib.h>
 #include <time.h>
 
-const int ThreadCount = 4;
-const int KeyCount = 16;
 uint64_t G = 0;
 
 
@@ -327,7 +325,7 @@ void Work(uint64_t n)
 #	define SleepWork 0
 #	if SleepWork
 #		define Info_Work "SleepWork  "
-		std::this_thread::sleep_for(std::chrono::nanoseconds(SleepWork));
+		std::this_thread::sleep_for(std::chrono::milliseconds(SleepWork));
 #
 #	else
 #		define Info_Work "CPUBoundWork  "
@@ -346,15 +344,21 @@ void Work(uint64_t n)
 #
 #else
 #	define Info_Config "Release  "
-#	if SleepWork
-#		define Div (100 * SleepWork)
-#	else
-#		define Div 1
-#	endif
-#
-#	define TaskCount (10000000 / Div)
+#	define TaskCount 10000000
 #
 #endif
+
+
+#if SleepWork
+#	undef  TaskCount
+#	define TaskCount 1000000
+#	define ThreadCount (50 * SleepWork)
+#
+#else
+#	define ThreadCount 4
+#
+#endif
+const int KeyCount = ThreadCount * 4;
 
 
 #define Sequential 1
