@@ -301,23 +301,29 @@ public:
 
 const int ThreadCount = 4;
 const int KeyCount = 16;
+uint64_t G = 0;
 
 
-#ifdef _DEBUG
-#	define Info_Config "Debug  "
-#	define TaskCount 1000000
+#define BeforehandPush 1
+#if BeforehandPush
+#	define Info_BeforehandPush "BeforehandPush  "
 #
 #else
-#	define Info_Config "Release  "
-#	define TaskCount 10000000
+#	define Info_BeforehandPush ""
 #
 #endif
 
 
 void Work(uint64_t n)
 {
-#define NoWork
-#ifndef NoWork
+#define NoWork 0
+#if NoWork > 1
+#	define Info_Work "NoWork2  "
+#
+#elif NoWork
+#	define Info_Work "NoWork1  "
+#
+#else
 #	define SleepWork 0
 #	if SleepWork
 #		define Info_Work "SleepWork  "
@@ -330,11 +336,25 @@ void Work(uint64_t n)
 			G += n;
 #	endif
 #
-#else
-#	define Info_Work "NoWork  "
-#
 #endif
 }
+
+
+#ifdef _DEBUG
+#	define Info_Config "Debug  "
+#	define TaskCount 1000000
+#
+#else
+#	define Info_Config "Release  "
+#	if SleepWork
+#		define Div (100 * SleepWork)
+#	else
+#		define Div 1
+#	endif
+#
+#	define TaskCount (10000000 / Div)
+#
+#endif
 
 
 #define Sequential 1
@@ -347,7 +367,7 @@ void Work(uint64_t n)
 #endif
 
 
-#define CheckDupKey Sequential
+#define CheckDupKey (NoWork<=1 && Sequential)
 #if CheckDupKey
 #	define Info_CheckDupKey "CheckDupKey  "
 #
@@ -363,20 +383,23 @@ void Work(uint64_t n)
 std::atomic_int workingCount[KeyCount];
 std::atomic_bool spinlock;
 std::set<int> result;
-uint64_t G = 0;
 
 int Test()
 {
 	auto start = std::chrono::high_resolution_clock::now();
 	std::chrono::duration<double, std::milli> elapsed;
 	srand(time(nullptr));
-	printf("시작. ThreadCount:%d, KeyCount:%d, TaskCount:%d\n", ThreadCount, KeyCount, TaskCount);
-	printf(Info_Config Info_Sequential Info_Work Info_CheckDupKey "\n");
+	printf("시작. ThreadCount:%d, KeyCount:%d, TaskCount:%d\n", ThreadCount, KeyCount, (int)TaskCount);
+	printf(Info_Config Info_Sequential Info_BeforehandPush Info_Work Info_CheckDupKey "\n");
 
 #if Sequential
 	SequentialThreadPool<int> tp(ThreadCount);
 #else
 	ThreadPool tp(ThreadCount);
+#endif
+
+#if !BeforehandPush
+	tp.Start();
 #endif
 
 	for (int i=0; i<TaskCount; ++i) {
@@ -387,7 +410,10 @@ int Test()
 		tp.PushTask([i, key]()
 #endif
 		{
-#if CheckDupKey
+#if NoWork > 1
+			Work(0);
+#else
+#	if CheckDupKey
 			struct _CheckDupKey
 			{
 				std::atomic_int& cnt;
@@ -403,7 +429,8 @@ int Test()
 					--cnt;
 				}
 			} task(key);
-#endif
+#	endif
+
 			bool cmp;
 			do {
 				cmp = false;
@@ -418,18 +445,28 @@ int Test()
 			assert(cmp);
 
 			Work(rnd);
+#endif
 		});
 	}
 	elapsed = std::chrono::high_resolution_clock::now() - start;
+
+#if BeforehandPush
 	printf("Push를 모두 완료, 작업 개시 (%.3lf sec)\n", elapsed.count()/1000);
 	tp.Start();
+#else
+	printf("Push를 모두 완료 (%.3lf sec)\n", elapsed.count()/1000);
+#endif
+
 	tp.Wait(true);
 	elapsed = std::chrono::high_resolution_clock::now() - start;
 
+#if NoWork <= 1
 	if (result.size() != TaskCount) {
 		printf("test fail %llu\n", (uint64_t)result.size());
 		return (int)G;
 	}
+#endif
+
 	printf("완료 (%.3lf sec)\n", elapsed.count()/1000);
 	return 0;
 }
