@@ -5,7 +5,7 @@
 #include <tuple>
 using namespace std;
 
-//#define USE_MOVE_OPERATION
+#define USE_MOVE_OPERATION
 #define ALLOW_COPY_OPERATION
 
 #define _cout cout << "   "
@@ -59,7 +59,7 @@ struct Obj
 		return *this;
 	}
 #endif
-	Obj& SomeFunc() {
+	const Obj& SomeFunc() const {
 		_cout << "Member Function       " << this << endl;
 		return *this;
 	}
@@ -95,6 +95,39 @@ std::vector<Obj> VectorReturnFunc2() {
 	PrintStep("return " << __FUNCTION__);
 	return v;
 }
+
+
+template <	size_t Offset,
+			size_t Count,
+			typename Tuple >
+inline void TuplePrint(const Tuple& t) {
+	if (Offset >= Count)
+		return;
+	std::get<Offset >= Count ? Count-1 : Offset>(t).SomeFunc();
+	TuplePrint<	Offset+1 >= Count ? Count : Offset+1,
+				Count,
+				Tuple>(t);
+}
+template <typename... ARGS>
+inline void VariadicTemplatesFunc1(const ARGS&... args) {
+	typedef std::tuple<ARGS...> Tuple;
+	Tuple t(args...);
+	TuplePrint<0, sizeof...(ARGS), typename Tuple>(t);
+}
+
+inline void VariadicTemplatesFunc2(Obj&& arg) {
+	Obj o = std::move(arg);
+	o.SomeFunc();
+}
+template <typename... ARGS>
+inline void VariadicTemplatesFunc2(Obj&& arg, ARGS&&... args)
+{
+	Obj o = std::move(arg);
+	o.SomeFunc();
+	VariadicTemplatesFunc2(std::move(args)...);
+}
+
+
 
 
 int main() {
@@ -198,21 +231,19 @@ int main() {
 
 	TestStart("Test10")
 		typedef std::function<void()> Func;
-		Obj o(123, "");
 
-		PrintStep(1);
-		auto func = [mv = std::move(o)]() // C++14
+		auto func = [mv = Obj(123, "asd")]() // C++14
 		{
 			_cout << "call func " << mv.i << "\n";
 		};
 
-		PrintStep(2);
+		PrintStep(1);
 		Func f1 = std::move(func);
 
-		PrintStep(3);
+		PrintStep(2);
 		Func f2 = std::move(f1);
 
-		PrintStep(4);
+		PrintStep(3);
 		Func f3 = f2;
 		f3();
 	TestEnd
@@ -233,6 +264,29 @@ int main() {
 		Obj o1(111, "o1");
 		Obj o2(222, "o2");
 		o1 = std::move(o2);
+	TestEnd
+
+
+	TestStart("Test13")
+		Obj o1(111, "o1");
+		Obj o2(222, "o2");
+		Obj o3(333, "o3");
+
+		PrintStep(1);
+		VariadicTemplatesFunc1(o1, o2, o3);
+	TestEnd
+
+
+	TestStart("Test14")
+		Obj o1(111, "o1");
+		Obj o2(222, "o2");
+		Obj o3(333, "o3");
+
+		PrintStep(1);
+		//VariadicTemplatesFunc2(o1, o2, o3);	// compile error
+		VariadicTemplatesFunc2(std::move(o1),
+							   std::move(o2),
+							   std::move(o3));
 	TestEnd
 	return 0;
 }
