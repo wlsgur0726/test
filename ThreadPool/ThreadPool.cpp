@@ -338,7 +338,7 @@ void Work(uint64_t n)
 }
 
 
-#ifdef _DEBUG
+#if !defined(NDEBUG) && (defined(DEBUG) || defined(_DEBUG))
 #	define Info_Config "Debug  "
 #	define TaskCount 1000000
 #

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>TLS_vs_GlobalWithLock</name>
+	<name>MemAllocSpeedTest</name>
 	<comment></comment>
 	<projects>
 	</projects>
